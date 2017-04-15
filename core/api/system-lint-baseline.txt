@@ -1,4 +1,8 @@
 // Baseline format: 1.0
+AcronymName: android.telephony.ims.stub.ImsUtImplBase#queryCFForServiceClass(int, String, int):
+    Acronyms should not be capitalized in method names: was `queryCFForServiceClass`, should this be `queryCfForServiceClass`?
+
+
 ArrayReturn: android.view.contentcapture.ViewNode#getAutofillOptions():
 
 
@@ -89,6 +93,10 @@ MissingNullability: android.telephony.mbms.DownloadRequest.Builder#setServiceId(
 
 OnNameExpected: android.service.smartspace.SmartspaceService#notifySmartspaceEvent(android.app.smartspace.SmartspaceSessionId, android.app.smartspace.SmartspaceTargetEvent):
     Methods implemented by developers should follow the on<Something> style, was `notifySmartspaceEvent`
+
+
+MissingNullability: android.telephony.ims.stub.ImsUtImplBase#queryCFForServiceClass(int, String, int) parameter #1:
+    Missing nullability on parameter `number` in method `queryCFForServiceClass`
 
 
 ProtectedMember: android.printservice.recommendation.RecommendationService#attachBaseContext(android.content.Context):

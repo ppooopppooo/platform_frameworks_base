@@ -5950,6 +5950,16 @@ public final class Settings {
          */
         public static final String DOZE_ON_CHARGE_NOW = "doze_on_charge_now";
 
+
+        /**
+         * Whether to change the transparency of the qs panel
+         * @hide
+         */
+        public static final String OMNI_QS_PANEL_BG_ALPHA = "qs_panel_bg_alpha";
+         /** @hide */
+        private static final Validator OMNI_QS_PANEL_BG_ALPHA_VALIDATOR =
+                ANY_INTEGER_VALIDATOR;
+                
         /**
          * Whether to use tint on QS tiles
          * @hide
@@ -6114,6 +6124,7 @@ public final class Settings {
             TINT_QS_TILES,
             FORCE_SHOW_NAVBAR,
             NOTIFICATION_HEADERS,
+            OMNI_QS_PANEL_BG_ALPHA,
         };
 
         /**
@@ -6332,6 +6343,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(SENSOR_BLOCK);
             PRIVATE_SETTINGS.add(DOZE_ON_CHARGE);
             PRIVATE_SETTINGS.add(FORCE_SHOW_NAVBAR);
+            PRIVATE_SETTINGS.add(OMNI_QS_PANEL_BG_ALPHA);
         }
 
         /**
@@ -6524,6 +6536,7 @@ public final class Settings {
             VALIDATORS.put(TINT_QS_TILES, TINT_QS_TILES_VALIDATOR);
             VALIDATORS.put(FORCE_SHOW_NAVBAR, FORCE_SHOW_NAVBAR_VALIDATOR);
             VALIDATORS.put(NOTIFICATION_HEADERS, NOTIFICATION_HEADERS_VALIDATOR);
+            VALIDATORS.put(OMNI_QS_PANEL_BG_ALPHA, OMNI_QS_PANEL_BG_ALPHA_VALIDATOR);
         }
 
         /**

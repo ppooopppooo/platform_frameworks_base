@@ -2154,7 +2154,7 @@ public class ActivityManagerService extends IActivityManager.Stub
                 }
             } break;
             case SHOW_FINGERPRINT_ERROR_UI_MSG: {
-                if (mShowDialogs) {
+                if ((SystemProperties.getBoolean("persist.vendor.hide.dialog",false)== false)&& mShowDialogs) {
                     AlertDialog d = new BaseErrorDialog(mUiContext);
                     d.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
                     d.setCancelable(false);
@@ -27669,6 +27669,10 @@ public class ActivityManagerService extends IActivityManager.Stub
         synchronized (this) {
             return mCutoutFullscreenController.shouldForceCutoutFullscreen(packageName);
         }
+    }
+
+    Context getContext() {
+        return mContext;
     }
 
 }

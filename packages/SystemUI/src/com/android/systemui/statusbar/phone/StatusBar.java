@@ -1928,7 +1928,7 @@ public class StatusBar extends SystemUI implements DemoMode,
      * If the user switcher is simple then disable QS during setup because
      * the user intends to use the lock screen user switcher, QS in not needed.
      */
-    private void updateQsExpansionEnabled() {
+    public void updateQsExpansionEnabled() {
         mNotificationPanel.setQsExpansionEnabled(isDeviceProvisioned()
                 && (mUserSetup || mUserSwitcherController == null
                         || !mUserSwitcherController.isSimpleUserSwitcher())
@@ -2495,7 +2495,7 @@ public class StatusBar extends SystemUI implements DemoMode,
             } else if (isDozing()) {
                 // We never want heads up when we are dozing.
                 return false;
-            } else {
+            } else if(mStatusBarKeyguardViewManager != null){
                 // we only allow head-up on the lockscreen if it doesn't have a fullscreen intent
                 return !mStatusBarKeyguardViewManager.isShowing()
                         || mStatusBarKeyguardViewManager.isOccluded();
@@ -6890,8 +6890,7 @@ public class StatusBar extends SystemUI implements DemoMode,
             // startKeyguard() hasn't been called yet, so we don't know.
             // Make sure anything that needs to know isKeyguardSecure() checks and re-checks this
             // value onVisibilityChanged().
-            Slog.w(TAG, "isKeyguardSecure() called before startKeyguard(), returning false",
-                    new Throwable());
+            Slog.w(TAG, "isKeyguardSecure() called before startKeyguard(), returning false");
             return false;
         }
         return mStatusBarKeyguardViewManager.isSecure();

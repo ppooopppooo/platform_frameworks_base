@@ -57,6 +57,8 @@ import com.android.server.LocalServices;
 import com.android.server.policy.WindowManagerPolicy;
 import com.android.server.statusbar.StatusBarManagerInternal;
 
+import com.android.internal.util.custom.thermal.ThermalController;
+
 /**
  * Sends broadcasts about important power state changes.
  * <p>
@@ -118,6 +120,7 @@ final class Notifier {
     @Nullable private final StatusBarManagerInternal mStatusBarManagerInternal;
     private final TrustManager mTrustManager;
     private final Vibrator mVibrator;
+    private final AudioManager mAudioManager;
 
     private final NotifierHandler mHandler;
     private final Intent mScreenOnIntent;
@@ -165,6 +168,7 @@ final class Notifier {
         mStatusBarManagerInternal = LocalServices.getService(StatusBarManagerInternal.class);
         mTrustManager = mContext.getSystemService(TrustManager.class);
         mVibrator = mContext.getSystemService(Vibrator.class);
+        mAudioManager = mContext.getSystemService(AudioManager.class);
 
         mHandler = new NotifierHandler(looper);
         mScreenOnIntent = new Intent(Intent.ACTION_SCREEN_ON);
@@ -717,6 +721,7 @@ final class Notifier {
         }
 
         if (mActivityManagerInternal.isSystemReady()) {
+            ThermalController.sendActivePackageChangedBroadcast("", mContext);
             mContext.sendOrderedBroadcastAsUser(mScreenOffIntent, UserHandle.ALL, null,
                     mGoToSleepBroadcastDone, mHandler, 0, null, null);
         } else {
@@ -784,7 +789,9 @@ final class Notifier {
         final boolean dndOff = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.ZEN_MODE, Settings.Global.ZEN_MODE_IMPORTANT_INTERRUPTIONS)
                 == Settings.Global.ZEN_MODE_OFF;
-        return enabled && dndOff;
+        final boolean silentMode = mAudioManager.getRingerModeInternal()
+                == AudioManager.RINGER_MODE_SILENT;
+        return enabled && dndOff && !silentMode;
     }
 
     private final class NotifierHandler extends Handler {

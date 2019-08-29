@@ -102,7 +102,6 @@ interface IStatusBarService
     void onFingerprintError(String error);
     // Used to hide the fingerprint dialog when the authenticationclient is stopped
     void hideFingerprintDialog();
-    void handleInDisplayFingerprintView(boolean show, boolean isEnrolling);
 
     /**
      * Syberia
@@ -126,4 +125,8 @@ interface IStatusBarService
 
     void toggleOrientationListener(boolean enable);
     void toggleCameraFlashState(boolean enable);
+
+    // Used to show or hide in display fingerprint view
+    void showInDisplayFingerprintView();
+    void hideInDisplayFingerprintView();
 }

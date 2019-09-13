@@ -668,7 +668,11 @@ public final class PowerManagerService extends SystemService
     private ISmartCharge mSmartCharge;
     private boolean mSmartChargingEnabled;
     private boolean mSmartChargingResetStats;
-    private int mSuspendLevel;
+    private boolean mPowerInputSuspended = false;
+    private int mSmartChargingLevel;
+    private int mSmartChargingResumeLevel;
+    private int mSmartChargingLevelDefaultConfig;
+    private int mSmartChargingResumeLevelDefaultConfig;
 
     /**
      * All times are in milliseconds. These constants are kept synchronized with the system
@@ -1223,6 +1227,12 @@ public final class PowerManagerService extends SystemService
                 Settings.System.SMART_CHARGING),
                 false, mSettingsObserver, UserHandle.USER_ALL);
         resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.SMART_CHARGING_LEVEL),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.SMART_CHARGING_RESUME_LEVEL),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
                 Settings.System.SMART_CHARGING_RESET_STATS),
                 false, mSettingsObserver, UserHandle.USER_ALL);
         IVrManager vrManager = IVrManager.Stub.asInterface(getBinderService(Context.VR_SERVICE));
@@ -1254,7 +1264,7 @@ public final class PowerManagerService extends SystemService
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         mContext.registerReceiver(new DockReceiver(), filter, null, mHandler);
 
-        initSmartCharge();
+        mSmartCharge = getSmartCharge();
     }
 
     @VisibleForTesting
@@ -1302,6 +1312,10 @@ public final class PowerManagerService extends SystemService
         mSupportsDoubleTapWakeConfig = resources.getBoolean(
                 com.android.internal.R.bool.config_supportDoubleTapWake);
         // Smart charging
+        mSmartChargingLevelDefaultConfig = resources.getInteger(
+                com.android.internal.R.integer.config_smartChargingBatteryLevel);
+        mSmartChargingResumeLevelDefaultConfig = resources.getInteger(
+                com.android.internal.R.integer.config_smartChargingBatteryResumeLevel);
         mSmartChargingResetStats = Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.SMART_CHARGING_RESET_STATS, 0) == 1;
     }
@@ -1357,6 +1371,12 @@ public final class PowerManagerService extends SystemService
         mAlwaysOnEnabled = mAmbientDisplayConfiguration.alwaysOnEnabled(UserHandle.USER_CURRENT);
         mSmartChargingEnabled = Settings.System.getInt(resolver,
                 Settings.System.SMART_CHARGING, 0) == 1;
+        mSmartChargingLevel = Settings.System.getInt(resolver,
+                Settings.System.SMART_CHARGING_LEVEL,
+                mSmartChargingLevelDefaultConfig);
+        mSmartChargingResumeLevel = Settings.System.getInt(resolver,
+                Settings.System.SMART_CHARGING_RESUME_LEVEL,
+                mSmartChargingResumeLevelDefaultConfig);
         mSmartChargingResetStats = Settings.System.getInt(resolver,
                 Settings.System.SMART_CHARGING_RESET_STATS, 0) == 1;
 
@@ -1403,7 +1423,7 @@ public final class PowerManagerService extends SystemService
     private void handleSettingsChangedLocked() {
         updateSettingsLocked();
         updatePowerStateLocked();
-        updateSmartChargeStatus();
+        updateSmartChargingStatus();
     }
 
     private void acquireWakeLockInternal(IBinder lock, int flags, String tag, String packageName,
@@ -2192,45 +2212,41 @@ public final class PowerManagerService extends SystemService
             }
 
             mBatterySaverStateMachine.setBatteryStatus(mIsPowered, mBatteryLevel, mBatteryLevelLow);
-            updateSmartChargeStatus();
+            updateSmartChargingStatus();
         }
     }
 
-    private void initSmartCharge() {
-        mSmartCharge = getSmartCharge();
-        if (mSmartCharge != null) {
-            try {
-                int defaultSuspendLevel = mSmartCharge.getSuspendLevel();
-                int defaultResumeLevel = mSmartCharge.getResumeLevel();
-                int suspendLevel = Settings.System.getInt(mContext.getContentResolver(),
-                     Settings.System.SMART_CHARGING_LEVEL, defaultSuspendLevel);
-                int resumeLevel = Settings.System.getInt(mContext.getContentResolver(),
-                     Settings.System.SMART_CHARGING_RESUME_LEVEL, defaultResumeLevel);
-                mSmartCharge.updateBatteryLevels(suspendLevel, resumeLevel);
-            } catch (RemoteException ex) {
-                ex.printStackTrace();
-            }
-        }
-    }
-
-    private void updateSmartChargeStatus() {
+    private void updateSmartChargingStatus() {
         if (mSmartCharge == null) {
             return;
         }
 
-        try {
-            mSmartCharge.setSmartChargeEnabled(mSmartChargingEnabled);
-            mSmartCharge.updateCapacity(mBatteryLevel);
-            mSuspendLevel = mSmartCharge.getSuspendLevel();
-        } catch (RemoteException ex) {
-            ex.printStackTrace();
+        if (mPowerInputSuspended && (mBatteryLevel <= mSmartChargingResumeLevel) ||
+            (mPowerInputSuspended && !mSmartChargingEnabled)) {
+            try {
+                mSmartCharge.setChargingEnabled(true);
+                mPowerInputSuspended = false;
+            } catch (RemoteException ex) {
+                ex.printStackTrace();
+            }
+            return;
         }
 
-        if (mSmartChargingEnabled && mSmartChargingResetStats && (mBatteryLevel >= mSuspendLevel)) {
+        if (mSmartChargingEnabled && !mPowerInputSuspended && (mBatteryLevel >= mSmartChargingLevel)) {
+            Slog.i(TAG, "Smart charging reset stats: " + mSmartChargingResetStats);
+            if (mSmartChargingResetStats) {
+                try {
+                     mBatteryStats.resetStatistics();
+                } catch (RemoteException e) {
+                         Slog.e(TAG, "failed to reset battery statistics");
+                }
+            }
+
             try {
-                 mBatteryStats.resetStatistics();
-            } catch (RemoteException e) {
-                     Slog.e(TAG, "failed to reset battery statistics");
+                mSmartCharge.setChargingEnabled(false);
+                mPowerInputSuspended = true;
+            } catch (RemoteException ex) {
+                ex.printStackTrace();
             }
         }
     }

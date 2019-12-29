@@ -104,11 +104,11 @@ public class NetworkTraffic extends TextView implements StatusIconDisplayable {
                 mTrafficVisible = false;
             } else {
                 // Get information for uplink ready so the line return can be added
-                String output = formatOutput(timeDelta, txData, symbol)+ "\u25b2";
+                String output = formatOutput(timeDelta, txData, symbol);
                 // Ensure text size is where it needs to be
                 output += "\n";
                 // Add information for downlink if it's called for
-                output += formatOutput(timeDelta, rxData, symbol) + "\u25bc";
+                output += formatOutput(timeDelta, rxData, symbol);
 
                 // Update view if there's anything new to show
                 if (! output.contentEquals(getText())) {
@@ -271,6 +271,7 @@ public class NetworkTraffic extends TextView implements StatusIconDisplayable {
                 lastUpdateTime = SystemClock.elapsedRealtime();
                 mTrafficHandler.sendEmptyMessage(1);
             }
+            updateTrafficDrawable();
             return;
         } else {
             clearHandlerCallbacks();
@@ -328,6 +329,7 @@ public class NetworkTraffic extends TextView implements StatusIconDisplayable {
         }
         mTintColor = DarkIconDispatcher.getTint(area, this, tint);
         setTextColor(mTintColor);
+        updateTrafficDrawable();
     }
 
     @Override
@@ -378,6 +380,7 @@ public class NetworkTraffic extends TextView implements StatusIconDisplayable {
         mColorIsStatic = true;
         mTintColor = color;
         setTextColor(mTintColor);
+        updateTrafficDrawable();
     }
 
     @Override

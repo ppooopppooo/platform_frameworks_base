@@ -147,4 +147,13 @@
     <string name="accessibility_quick_settings_sync_changed_off">Синхронизация выкл.</string>
     <string name="accessibility_quick_settings_sync_changed_on">Синхронизация вкл.</string>
 
+    <!-- LTE QS Tile -->
+    <string name="qs_lte_label">LTE</string>
+    <string name="lte_on">LTE вкл.</string>
+    <string name="lte_off">LTE выкл.</string>
+
+    <!-- Language toggle tile -->
+    <string name="quick_settings_locale_label">Язык</string>
+    <string name="quick_settings_locale_more_locales_toast">Пожалуйста, настройте несколько языков чтобы активировать функционал плитки</string>
+
 </resources>

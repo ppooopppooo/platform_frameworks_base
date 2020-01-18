@@ -148,6 +148,9 @@ public final class ClockManager {
         LayoutInflater layoutInflater = injectionInflater.injectable(LayoutInflater.from(context));
 
         addBuiltinClock(() -> new DefaultClockController(res, layoutInflater, colorExtractor));
+        addBuiltinClock(() -> new DefaultBoldClockController(res, layoutInflater, colorExtractor));
+        addBuiltinClock(() -> new SamsungClockController(res, layoutInflater, colorExtractor));
+        addBuiltinClock(() -> new SamsungBoldClockController(res, layoutInflater, colorExtractor));
         addBuiltinClock(() -> new BubbleClockController(res, layoutInflater, colorExtractor));
         addBuiltinClock(() -> new AnalogClockController(res, layoutInflater, colorExtractor));
         addBuiltinClock(() -> new TypeClockController(res, layoutInflater, colorExtractor));
@@ -244,11 +247,12 @@ public final class ClockManager {
         mPreviewClocks.reloadCurrentClock();
         mListeners.forEach((listener, clocks) -> {
             clocks.reloadCurrentClock();
-            ClockPlugin clock = clocks.getCurrentClock();
-            if (clock instanceof DefaultClockController) {
-                listener.onClockChanged(null);
+            final ClockPlugin clock = clocks.getCurrentClock();
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                listener.onClockChanged(clock instanceof DefaultClockController ? null : clock);
             } else {
-                listener.onClockChanged(clock);
+                mMainHandler.post(() -> listener.onClockChanged(
+                        clock instanceof DefaultClockController ? null : clock));
             }
         });
     }
@@ -323,7 +327,7 @@ public final class ClockManager {
             mClocks.put(plugin.getClass().getName(), plugin);
             mClockInfo.add(ClockInfo.builder()
                     .setName(plugin.getName())
-                    .setTitle(plugin.getTitle())
+                    .setTitle(plugin::getTitle)
                     .setId(id)
                     .setThumbnail(plugin::getThumbnail)
                     .setPreview(() -> plugin.getPreview(mWidth, mHeight))

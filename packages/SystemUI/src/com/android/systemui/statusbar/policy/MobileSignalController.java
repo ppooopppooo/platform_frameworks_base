@@ -16,19 +16,25 @@
 package com.android.systemui.statusbar.policy;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.database.ContentObserver;
+import android.graphics.drawable.Drawable;
 import android.net.NetworkCapabilities;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.UserHandle;
+import android.provider.Settings;
 import android.provider.Settings.Global;
 import android.telephony.NetworkRegistrationInfo;
-import android.telephony.ims.ImsReasonInfo;
 import android.telephony.ims.ImsMmTelManager;
+import android.telephony.ims.ImsReasonInfo;
+import android.telephony.ims.feature.MmTelFeature;
 import android.telephony.PhoneStateListener;
 import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
@@ -48,8 +54,8 @@ import com.android.internal.telephony.cdma.EriInfo;
 import com.android.settingslib.Utils;
 import com.android.settingslib.graph.SignalDrawable;
 import com.android.settingslib.net.SignalStrengthUtil;
-import com.android.systemui.R;
 import com.android.systemui.Dependency;
+import com.android.systemui.R;
 import com.android.systemui.statusbar.policy.NetworkController.IconState;
 import com.android.systemui.statusbar.policy.NetworkController.SignalCallback;
 import com.android.systemui.statusbar.policy.NetworkControllerImpl.Config;
@@ -99,11 +105,20 @@ public class MobileSignalController extends SignalController<
     // Some specific carriers have 5GE network which is special LTE CA network.
     private static final int NETWORK_TYPE_LTE_CA_5GE = TelephonyManager.MAX_NETWORK_TYPE + 1;
 
-    private ImsManager mImsManager;
-    private ImsManager.Connector mImsManagerConnector;
-    private boolean mVolteIcon;
     private boolean mRoamingIconAllowed;
     private boolean mDataDisabledIcon;
+
+    private ImsManager mImsManager;
+    private ImsManager.Connector mImsManagerConnector;
+    private int mCallState = TelephonyManager.CALL_STATE_IDLE;
+
+    // 4G instead of LTE
+    private int mShow4GUserConfig;
+
+    // Volte Icon
+    private boolean mVoLTEicon;
+    // Volte Icon Style
+    private int mVoLTEstyle;
 
     // TODO: Reduce number of vars passed in, if we have the NetworkController, probably don't
     // need listener lists anymore.
@@ -153,13 +168,13 @@ public class MobileSignalController extends SignalController<
                     }
         });
 
+
         mObserver = new ContentObserver(new Handler(receiverLooper)) {
             @Override
             public void onChange(boolean selfChange) {
                 updateTelephony();
             }
         };
-        Dependency.get(TunerService.class).addTunable(this, "volte");
         Dependency.get(TunerService.class).addTunable(this, "roaming");
         Dependency.get(TunerService.class).addTunable(this, "data_disabled");
 
@@ -172,16 +187,60 @@ public class MobileSignalController extends SignalController<
                 }
             }
         };
+
+        Handler mHandler = new Handler();
+        SettingsObserver settingsObserver = new SettingsObserver(mHandler);
+        settingsObserver.observe();
+    }
+
+    protected class SettingsObserver extends ContentObserver {
+        SettingsObserver(Handler handler) {
+            super(handler);
+        }
+
+        void observe() {
+           ContentResolver resolver = mContext.getContentResolver();
+           resolver.registerContentObserver(Settings.System.getUriFor(
+                  Settings.System.SHOW_FOURG),
+                  false, this, UserHandle.USER_ALL);
+           resolver.registerContentObserver(Settings.System.getUriFor(
+                  Settings.System.SHOW_VOLTE_ICON),
+                  false,this, UserHandle.USER_ALL);
+           resolver.registerContentObserver(Settings.System.getUriFor(
+                  Settings.System.VOLTE_ICON_STYLE),
+                  false,this, UserHandle.USER_ALL);
+           updateSettings();
+        }
+
+        /*
+         *  @hide
+         */
+        @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            updateSettings();
+        }
+    }
+
+    private void updateSettings() {
+        ContentResolver resolver = mContext.getContentResolver();
+        mShow4GUserConfig = Settings.System.getIntForUser(resolver,
+                Settings.System.SHOW_FOURG, -1,
+                UserHandle.USER_CURRENT);
+        mVoLTEicon = Settings.System.getIntForUser(resolver,
+                Settings.System.SHOW_VOLTE_ICON, 0,
+                UserHandle.USER_CURRENT) == 1;
+        mVoLTEstyle = Settings.System.getIntForUser(resolver,
+                Settings.System.VOLTE_ICON_STYLE, 0,
+                UserHandle.USER_CURRENT);
+
+        mapIconSets();
+        updateTelephony();
+        notifyListeners();
     }
 
     @Override
     public void onTuningChanged(String key, String newValue) {
         switch (key) {
-            case "volte":
-                     mVolteIcon =
-                        TunerService.parseIntegerSwitch(newValue, true);
-                        notifyListenersIfNecessary();
-                break;
             case "roaming":
                      mRoamingIconAllowed =
                         TunerService.parseIntegerSwitch(newValue, true);
@@ -195,48 +254,6 @@ public class MobileSignalController extends SignalController<
             default:
                 break;
         }
-    }
-
-    private void setListeners() {
-        if (mImsManager == null) {
-            Log.e(mTag, "setListeners mImsManager is null");
-            return;
-        }
-
-        try {
-            mImsManager.addRegistrationCallback(mImsRegistrationCallback);
-            Log.d(mTag, "addRegistrationCallback " + mImsRegistrationCallback
-                    + " into " + mImsManager);
-        } catch (ImsException e) {
-            Log.d(mTag, "unable to addRegistrationCallback callback.");
-        }
-        queryImsState();
-    }
-
-    private void queryImsState() {
-        TelephonyManager tm = mPhone.createForSubscriptionId(mSubscriptionInfo.getSubscriptionId());
-        mCurrentState.imsRegistered = mPhone.isImsRegistered(mSubscriptionInfo.getSubscriptionId());
-        if (DEBUG) {
-            Log.d(mTag, "queryImsState tm=" + tm + " phone=" + mPhone
-                    + " imsResitered=" + mCurrentState.imsRegistered);
-        }
-        notifyListenersIfNecessary();
-    }
-
-    private void removeListeners() {
-        if (mImsManager == null) {
-            Log.e(mTag, "removeListeners mImsManager is null");
-            return;
-        }
-
-        try {
-            mImsManager.removeRegistrationListener(mImsRegistrationCallback);
-            Log.d(mTag, "removeRegistrationCallback " + mImsRegistrationCallback
-                    + " from " + mImsManager);
-        } catch (IllegalArgumentException e) {
-            Log.d(mTag, "unable to remove callback.");
-        }
-
     }
 
     public void setConfiguration(Config config) {
@@ -351,7 +368,9 @@ public class MobileSignalController extends SignalController<
         mNetworkToIconLookup.put(TelephonyManager.NETWORK_TYPE_HSPA, hGroup);
         mNetworkToIconLookup.put(TelephonyManager.NETWORK_TYPE_HSPAP, hPlusGroup);
 
-        if (mConfig.show4gForLte) {
+        boolean shouldShow4G = mShow4GUserConfig == -1 ? 
+                mConfig.show4gForLte : (mShow4GUserConfig == 1);
+        if (shouldShow4G) {
             mNetworkToIconLookup.put(TelephonyManager.NETWORK_TYPE_LTE, TelephonyIcons.FOUR_G);
             if (mConfig.hideLtePlus) {
                 mNetworkToIconLookup.put(TelephonyManager.NETWORK_TYPE_LTE_CA,
@@ -421,10 +440,85 @@ public class MobileSignalController extends SignalController<
     private int getVolteResId() {
         int resId = 0;
 
-        if ( mCurrentState.imsRegistered ) {
-            resId = R.drawable.ic_volte;
+        if (mCurrentState.imsRegistered && mVoLTEicon) {
+            switch(mVoLTEstyle) {
+                // VoLTE
+                case 1:
+                    resId = R.drawable.ic_volte1;
+                    break;
+                // OOS VoLTE
+                case 2:
+                    resId = R.drawable.ic_volte2;
+                    break;
+                // HD Icon
+                case 3:
+                    resId = R.drawable.ic_hd_volte;
+                    break;
+                // ASUS VoLTE
+                case 4:
+                    resId = R.drawable.ic_volte3;
+                    break;
+                // CAF HD Icon
+                case 5:
+                    resId = R.drawable.ic_hd2_volte;
+                    break;
+                case 0:
+                default:
+                    resId = R.drawable.ic_volte;
+                    break;
+            }
         }
         return resId;
+    }
+
+    private void setListeners() {
+        if (mImsManager == null) {
+            Log.e(mTag, "setListeners mImsManager is null");
+            return;
+        }
+
+        try {
+            mImsManager.addCapabilitiesCallback(mCapabilityCallback);
+            mImsManager.addRegistrationCallback(mImsRegistrationCallback);
+            Log.d(mTag, "addCapabilitiesCallback " + mCapabilityCallback + " into " + mImsManager);
+            Log.d(mTag, "addRegistrationCallback " + mImsRegistrationCallback
+                    + " into " + mImsManager);
+        } catch (ImsException e) {
+            Log.d(mTag, "unable to addCapabilitiesCallback callback.");
+        }
+        queryImsState();
+    }
+
+    private void queryImsState() {
+        TelephonyManager tm = mPhone.createForSubscriptionId(mSubscriptionInfo.getSubscriptionId());
+        mCurrentState.voiceCapable = tm.isVolteAvailable();
+        mCurrentState.videoCapable = tm.isVideoTelephonyAvailable();
+        mCurrentState.imsRegistered = mPhone.isImsRegistered(mSubscriptionInfo.getSubscriptionId());
+        if (DEBUG) {
+            Log.d(mTag, "queryImsState tm=" + tm + " phone=" + mPhone
+                    + " voiceCapable=" + mCurrentState.voiceCapable
+                    + " videoCapable=" + mCurrentState.videoCapable
+                    + " imsResitered=" + mCurrentState.imsRegistered);
+        }
+        notifyListenersIfNecessary();
+    }
+
+    private void removeListeners() {
+        if (mImsManager == null) {
+            Log.e(mTag, "removeListeners mImsManager is null");
+            return;
+        }
+
+        try {
+            mImsManager.removeCapabilitiesCallback(mCapabilityCallback);
+            mImsManager.removeRegistrationListener(mImsRegistrationCallback);
+            Log.d(mTag, "removeCapabilitiesCallback " + mCapabilityCallback
+                    + " from " + mImsManager);
+            Log.d(mTag, "removeRegistrationCallback " + mImsRegistrationCallback
+                    + " from " + mImsManager);
+        } catch (ImsException e) {
+            Log.d(mTag, "unable to remove callback.");
+        }
     }
 
     @Override
@@ -468,10 +562,8 @@ public class MobileSignalController extends SignalController<
                 && !mCurrentState.carrierNetworkChangeMode
                 && mCurrentState.activityOut;
         showDataIcon &= mCurrentState.isDefault || dataDisabled;
-
         int typeIcon = (showDataIcon || mConfig.alwaysShowDataRatIcon) ? icons.mDataType : 0;
-        int volteIcon = mConfig.showVolteIcon && isVolteSwitchOn() && mVolteIcon
-                ? getVolteResId() : 0;
+        int volteIcon = isVolteSwitchOn() ? getVolteResId() : 0;
         callback.setMobileDataIndicators(statusIcon, qsIcon, typeIcon, qsTypeIcon,
                 activityIn, activityOut, volteIcon, dataContentDescription, dataContentDescriptionHtml,
                 description, icons.mIsWide, mSubscriptionInfo.getSubscriptionId(),
@@ -862,7 +954,29 @@ public class MobileSignalController extends SignalController<
         public void onActiveDataSubscriptionIdChanged(int subId) {
             if (DEBUG) Log.d(mTag, "onActiveDataSubscriptionIdChanged: subId=" + subId);
             updateDataSim();
+	    updateTelephony();
+	}
+
+	@Override
+        public void onCallStateChanged(int state, String phoneNumber) {
+            if (DEBUG) {
+                Log.d(mTag, "onCallStateChanged: state=" + state);
+            }
+            mCallState = state;
             updateTelephony();
+        }
+    };
+
+    private ImsMmTelManager.CapabilityCallback mCapabilityCallback = new ImsMmTelManager.CapabilityCallback() {
+        @Override
+        public void onCapabilitiesStatusChanged(MmTelFeature.MmTelCapabilities config) {
+            mCurrentState.voiceCapable =
+                    config.isCapable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VOICE);
+            mCurrentState.videoCapable =
+                    config.isCapable(MmTelFeature.MmTelCapabilities.CAPABILITY_TYPE_VIDEO);
+            Log.d(mTag, "onCapabilitiesStatusChanged isVoiceCapable=" + mCurrentState.voiceCapable
+                    + " isVideoCapable=" + mCurrentState.videoCapable);
+            notifyListenersIfNecessary();
         }
     };
 
@@ -893,9 +1007,7 @@ public class MobileSignalController extends SignalController<
     private final BroadcastReceiver mVolteSwitchObserver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             Log.d(mTag, "action=" + intent.getAction());
-            if ( mConfig.showVolteIcon ) {
-                notifyListeners();
-            }
+            notifyListeners();
         }
     };
 
@@ -928,8 +1040,10 @@ public class MobileSignalController extends SignalController<
         boolean isDefault;
         boolean userSetup;
         boolean roaming;
-        boolean imsRegistered;
         boolean defaultDataOff;  // Tracks the on/off state of the defaultDataSubscription
+        boolean imsRegistered;
+        boolean voiceCapable;
+        boolean videoCapable;
 
         @Override
         public void copyFrom(State s) {
@@ -945,8 +1059,10 @@ public class MobileSignalController extends SignalController<
             carrierNetworkChangeMode = state.carrierNetworkChangeMode;
             userSetup = state.userSetup;
             roaming = state.roaming;
-            imsRegistered = state.imsRegistered;
             defaultDataOff = state.defaultDataOff;
+            imsRegistered = state.imsRegistered;
+            voiceCapable = state.voiceCapable;
+            videoCapable = state.videoCapable;
         }
 
         @Override
@@ -964,8 +1080,10 @@ public class MobileSignalController extends SignalController<
             builder.append("carrierNetworkChangeMode=").append(carrierNetworkChangeMode)
                     .append(',');
             builder.append("userSetup=").append(userSetup).append(',');
-            builder.append("imsRegistered=").append(imsRegistered).append(',');
             builder.append("defaultDataOff=").append(defaultDataOff);
+            builder.append("imsRegistered=").append(imsRegistered).append(',');
+            builder.append("voiceCapable=").append(voiceCapable).append(',');
+            builder.append("videoCapable=").append(videoCapable);
         }
 
         @Override
@@ -981,8 +1099,10 @@ public class MobileSignalController extends SignalController<
                     && ((MobileState) o).userSetup == userSetup
                     && ((MobileState) o).isDefault == isDefault
                     && ((MobileState) o).roaming == roaming
+                    && ((MobileState) o).defaultDataOff == defaultDataOff
                     && ((MobileState) o).imsRegistered == imsRegistered
-                    && ((MobileState) o).defaultDataOff == defaultDataOff;
+                    && ((MobileState) o).voiceCapable == voiceCapable
+                    && ((MobileState) o).videoCapable == videoCapable;
         }
     }
 }

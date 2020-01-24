@@ -5323,6 +5323,32 @@ public final class Settings {
          */
         public static final String NOTIFICATION_SOUND_VIB_SCREEN_ON = "notification_sound_vib_screen_on";
 
+        /**
+         * Show 4G instead of LTE
+         * @hide
+         */
+        public static final String SHOW_FOURG = "show_fourg";
+
+        /**
+         * Whether to show VoLTE icon or not
+         * @hide
+         */
+        public static final String SHOW_VOLTE_ICON = "show_volte_icon";
+
+        /** @hide */
+        public static final Validator SHOW_VOLTE_ICON_VALIDATOR = BOOLEAN_VALIDATOR;
+
+        /**
+         * VoLTE icon style
+         * @hide
+         */
+        public static final String VOLTE_ICON_STYLE = "volte_icon_style";
+
+        /** @hide */
+        public static final Validator VOLTE_ICON_STYLE_VALIDATOR = ANY_INTEGER_VALIDATOR;
+
+        /** @hide */
+        public static final Validator SHOW_FOURG_VALIDATOR = BOOLEAN_VALIDATOR;
        /**
          * Position of date
          * 0 - Left of clock
@@ -5398,7 +5424,6 @@ public final class Settings {
         private static final Validator BATTERY_LIGHT_FULL_COLOR_VALIDATOR =
                 ANY_STRING_VALIDATOR;
 
-        /**
         /**
         * Really full 100 battery charging color
         * @hide
@@ -5931,6 +5956,9 @@ public final class Settings {
             PRIVATE_SETTINGS.add(POWERMENU_LOGOUT);
             PRIVATE_SETTINGS.add(POWERMENU_LOCKSCREEN);
             PRIVATE_SETTINGS.add(POWERMENU_TORCH);
+            PRIVATE_SETTINGS.add(SHOW_FOURG);
+            PRIVATE_SETTINGS.add(SHOW_VOLTE_ICON);
+            PRIVATE_SETTINGS.add(VOLTE_ICON_STYLE);
             PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_STATE);
             PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD);
             PRIVATE_SETTINGS.add(HEADS_UP_STOPLIST_VALUES);
@@ -6063,6 +6091,9 @@ public final class Settings {
             VALIDATORS.put(WIFI_STATIC_NETMASK, WIFI_STATIC_NETMASK_VALIDATOR);
             VALIDATORS.put(WIFI_STATIC_DNS1, WIFI_STATIC_DNS1_VALIDATOR);
             VALIDATORS.put(WIFI_STATIC_DNS2, WIFI_STATIC_DNS2_VALIDATOR);
+            VALIDATORS.put(SHOW_FOURG, SHOW_FOURG_VALIDATOR);
+            VALIDATORS.put(SHOW_VOLTE_ICON, SHOW_VOLTE_ICON_VALIDATOR);
+            VALIDATORS.put(VOLTE_ICON_STYLE, VOLTE_ICON_STYLE_VALIDATOR);
             VALIDATORS.put(NOTIFICATION_LIGHT_PULSE, BOOLEAN_VALIDATOR);
             VALIDATORS.put(DEVICE_PROXI_CHECK_ENABLED,
                     DEVICE_PROXI_CHECK_ENABLED_VALIDATOR);
@@ -10348,6 +10379,14 @@ public final class Settings {
                 new SettingsValidators.DiscreteValueValidator(new String[] {"0", "1", "2"});
 
         /**
+         * Whether to show or hide the arrow for back gesture
+         * @hide
+         */
+        public static final String SHOW_BACK_ARROW_GESTURE = "show_back_arrow_gesture";
+
+        private static final Validator SHOW_BACK_ARROW_GESTURE_VALIDATOR = BOOLEAN_VALIDATOR;
+
+        /**
          * Controls whether aware is enabled.
          * @hide
          */
@@ -10668,6 +10707,7 @@ public final class Settings {
             VALIDATORS.put(ASSIST_GESTURE_ENABLED, ASSIST_GESTURE_ENABLED_VALIDATOR);
             VALIDATORS.put(ASSIST_GESTURE_SILENCE_ALERTS_ENABLED,
                     ASSIST_GESTURE_SILENCE_ALERTS_ENABLED_VALIDATOR);
+            VALIDATORS.put(SHOW_BACK_ARROW_GESTURE, SHOW_BACK_ARROW_GESTURE_VALIDATOR);
             VALIDATORS.put(ASSIST_GESTURE_WAKE_ENABLED, ASSIST_GESTURE_WAKE_ENABLED_VALIDATOR);
             VALIDATORS.put(VR_DISPLAY_MODE, VR_DISPLAY_MODE_VALIDATOR);
             VALIDATORS.put(NOTIFICATION_BADGING, NOTIFICATION_BADGING_VALIDATOR);

@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-
-    <string name="clock_title_default_bold" translatable="false">Default (bold)</string>
-    <string name="clock_title_samsung" translatable="false">Samsung</string>
-    <string name="clock_title_samsung_bold" translatable="false">Samsung (bold)</string>
-
+<resources>
+    <string name="clock_title_two_line_digital" translatable="false">Vertical</string>
+    <string name="clock_title_one_line_digital" translatable="false">Digital</string>
 </resources>

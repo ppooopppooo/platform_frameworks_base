@@ -180,6 +180,7 @@ import android.service.dreams.IDreamManager;
 import android.service.vr.IPersistentVrStateCallbacks;
 import android.speech.RecognizerIntent;
 import android.telecom.TelecomManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.LongSparseArray;
 import android.util.MutableBoolean;
@@ -211,6 +212,7 @@ import android.view.autofill.AutofillManagerInternal;
 
 import com.android.internal.R;
 import com.android.internal.accessibility.AccessibilityShortcutController;
+import com.android.internal.custom.longshot.ILongScreenshotManager;
 import com.android.internal.logging.MetricsLogger;
 import com.android.internal.logging.nano.MetricsProto;
 import com.android.internal.os.RoSystemProperties;
@@ -424,6 +426,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private boolean mVolumeMusicControlActive;
     private boolean mVolumeMusicControl;
     private boolean mVolumeWakeActive;
+
+    // Double-tap-to-doze
+    private boolean mDoubleTapToWake;
+    private boolean mDoubleTapToDoze;
+    private boolean mNativeDoubleTapToDozeAvailable;
 
     // Assigned on main thread, accessed on UI thread
     volatile VrManagerInternal mVrManagerInternal;
@@ -923,6 +930,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 		    UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.Secure.getUriFor(
                     Settings.Secure.LOCK_POWER_MENU_DISABLED), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.DOZE_TRIGGER_DOUBLETAP), false, this,
                     UserHandle.USER_ALL);
             updateSettings();
         }
@@ -1635,9 +1645,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
         @Override
         public void run() {
-            if (!mPocketLockShowing) {
-                mDefaultDisplayPolicy.takeScreenshot(mScreenshotType);
-            }
+            boolean dockMinimized = mWindowManagerInternal.isMinimizedDock();
+            mDefaultDisplayPolicy.takeScreenshot(mScreenshotType, dockMinimized);
         }
     }
 
@@ -1650,18 +1659,39 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     }
 
     void showGlobalActionsInternal() {
-        final boolean keyguardShowing = isKeyguardShowingAndNotOccluded();
-        if (keyguardShowing && isKeyguardSecure(mCurrentUserId) &&
-                mGlobalActionsOnLockDisable) {
-            return;
-        }
+        stopLongshot();
         if (mGlobalActions == null) {
             mGlobalActions = new GlobalActions(mContext, mWindowManagerFuncs);
         }
+        final boolean keyguardShowing = isKeyguardShowingAndNotOccluded();
         mGlobalActions.showDialog(keyguardShowing, isDeviceProvisioned());
         // since it took two seconds of long press to bring this up,
         // poke the wake lock so they have some time to see the dialog.
         mPowerManager.userActivity(SystemClock.uptimeMillis(), false);
+    }
+
+    private void stopLongshot() {
+        ILongScreenshotManager shot = ILongScreenshotManager.Stub.asInterface(ServiceManager.getService(Context.LONGSCREENSHOT_SERVICE));
+        if (shot != null) {
+            try {
+                if (shot.isLongshotMode()) {
+                    shot.stopLongshot();
+                }
+            } catch (RemoteException e) {
+                Slog.d(TAG, e.toString());
+            }
+        }
+    }
+
+    @Override
+    public void stopLongshotConnection() {
+        mDefaultDisplayPolicy.stopLongshotConnection();
+    }
+
+    @Override
+    public void mokeeTakeScreenshot(int type) {
+        mScreenshotRunnable.setScreenshotType(type);
+        mHandler.post(mScreenshotRunnable);
     }
 
     boolean isDeviceProvisioned() {
@@ -1954,6 +1984,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mAccessibilityShortcutController =
                 new AccessibilityShortcutController(mContext, new Handler(), mCurrentUserId);
         mLogger = new MetricsLogger();
+
+        // Double-tap-to-doze
+        mNativeDoubleTapToDozeAvailable = !TextUtils.isEmpty(
+                mContext.getResources().getString(R.string.config_dozeDoubleTapSensorType));
+
         // Init display burn-in protection
         boolean burnInProtectionEnabled = context.getResources().getBoolean(
                 com.android.internal.R.bool.config_enableBurnInProtection);
@@ -2283,6 +2318,13 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     public void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
         boolean updateRotation = false;
+
+        // Double-tap-to-doze
+        mDoubleTapToWake = Settings.Secure.getInt(resolver,
+                Settings.Secure.DOUBLE_TAP_TO_WAKE, 0) == 1;
+        mDoubleTapToDoze = Settings.System.getInt(resolver,
+                Settings.System.DOZE_TRIGGER_DOUBLETAP, 0) == 1;
+
         synchronized (mLock) {
             mEndcallBehavior = Settings.System.getIntForUser(resolver,
                     Settings.System.END_BUTTON_BEHAVIOR,
@@ -4439,7 +4481,15 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
             case KeyEvent.KEYCODE_WAKEUP: {
                 result &= ~ACTION_PASS_TO_USER;
-                isWakeKey = true;
+                // Double-tap-to-doze
+                if (mDoubleTapToWake && mDoubleTapToDoze && !mNativeDoubleTapToDozeAvailable) {
+                    isWakeKey = false;
+                    if (!down) {
+                        mContext.sendBroadcast(new Intent("com.android.systemui.doze.pulse"));
+                    }
+                } else {
+                    isWakeKey = true;
+                }
                 break;
             }
 

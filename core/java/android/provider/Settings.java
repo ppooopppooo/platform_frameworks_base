@@ -123,6 +123,16 @@ public final class Settings {
     public static final String ACTION_SETTINGS = "android.settings.SETTINGS";
 
     /**
+     * Activity Action: Show screen satbilization settings.
+     * <p>
+     * Input: Nothing.
+     * <p>
+     * Output: Nothing.
+     */
+    @SdkConstant(SdkConstantType.ACTIVITY_INTENT_ACTION)
+    public static final String SCREEN_STABILIZATION_SETTINGS = "android.settings.SCREEN_STABILIZATION";
+    
+    /**
      * Activity Action: Show settings to allow configuration of APNs.
      * <p>
      * Input: Nothing.
@@ -4550,7 +4560,21 @@ public final class Settings {
                 BOOLEAN_VALIDATOR;
 
         /**
+         * Screen stabilization parameters
          * @hide
+         */
+        public static final String STABILIZATION_ENABLE = "stabilization_enable";
+
+        public static final String STABILIZATION_VELOCITY_FRICTION = "stabilization_velocity_friction";
+
+        public static final String STABILIZATION_POSITION_FRICTION = "stabilization_position_friction";
+
+        public static final String STABILIZATION_LOWPASS_ALPHA = "stabilization_lowpass_alpha";
+
+        public static final String STABILIZATION_VELOCITY_AMPLITUDE = "stabilization_velocity_amplitude";
+
+        /**
+	 * @hide
          */
         public static final String ADVANCED_REBOOT = "advanced_reboot";
 
@@ -5370,6 +5394,17 @@ public final class Settings {
                 ANY_INTEGER_VALIDATOR;
 
         /**
+         * Number of times to repeat animations of Ambient edge light
+         * 0 is infinite
+         * @hide
+         */
+        public static final String PULSE_AMBIENT_LIGHT_REPEAT_COUNT = "pulse_ambient_light_repeat_count";
+
+        /** @hide */
+        private static final Validator PULSE_AMBIENT_LIGHT_REPEAT_COUNT_VALIDATOR =
+                ANY_INTEGER_VALIDATOR;
+
+        /**
          * Whether the battery light should be enabled (if hardware supports it)
          * The value is boolean (1 or 0).
          * @hide
@@ -5569,6 +5604,23 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_QUICK_QS_PULLDOWN = "status_bar_quick_qs_pulldown";
+	
+	/**
+         * Status bar carrier label
+         * 0: Hide
+         * 1: Display on keyguard status bar
+         * 2: Display on normal status bar
+         * 3: Enabled for both
+         * @hide
+         */
+        public static final String STATUS_BAR_SHOW_CARRIER = "status_bar_show_carrier";
+
+        /**
+         * custom carrier label. The value is
+         * String.
+         * @hide
+         */
+        public static final String CUSTOM_CARRIER_LABEL = "custom_carrier_label";
 
         /**
          * Whether to enable Ambient edge light
@@ -5670,6 +5722,33 @@ public final class Settings {
          * @hide
          */
         public static final String DOZE_TRIGGER_DOUBLETAP = "doze_trigger_doubletap";
+
+        /**
+         * Whether to blur behind QS
+         * @hide
+         */
+        public static final String QS_BACKGROUND_BLUR = "qs_background_blur";
+
+        /** @hide */
+        private static final Validator QS_BACKGROUND_BLUR_VALIDATOR = BOOLEAN_VALIDATOR;
+
+        /**
+         * QS blur alpha
+         * @hide
+         */
+        public static final String QS_BACKGROUND_BLUR_ALPHA = "qs_background_blur_alpha";
+
+        /** @hide */
+        private static final Validator QS_BACKGROUND_BLUR_ALPHA_VALIDATOR = ANY_INTEGER_VALIDATOR;
+
+        /**
+         * QS blur intensity
+         * @hide
+         */
+        public static final String QS_BACKGROUND_BLUR_INTENSITY = "qs_background_blur_intensity";
+
+        /** @hide */
+        private static final Validator QS_BACKGROUND_BLUR_INTENSITY_VALIDATOR = ANY_INTEGER_VALIDATOR;
 
         /**
          * Settings to backup. This is here so that it's in the same place as the settings
@@ -5803,6 +5882,10 @@ public final class Settings {
             PULSE_AMBIENT_LIGHT_COLOR,
             BACK_GESTURE_HEIGHT,
             BACK_GESTURE_HAPTIC,
+            PULSE_AMBIENT_LIGHT_REPEAT_COUNT,
+            QS_BACKGROUND_BLUR,
+            QS_BACKGROUND_BLUR_ALPHA,
+            QS_BACKGROUND_BLUR_INTENSITY,
         };
 
         /**
@@ -6011,6 +6094,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(BACK_GESTURE_HAPTIC);
             PRIVATE_SETTINGS.add(SWAP_VOLUME_BUTTONS);
             PRIVATE_SETTINGS.add(TOAST_ICON);
+            PRIVATE_SETTINGS.add(PULSE_AMBIENT_LIGHT_REPEAT_COUNT);
         }
 
         /**
@@ -6195,6 +6279,10 @@ public final class Settings {
             VALIDATORS.put(DISPLAY_CUTOUT_HIDDEN, DISPLAY_CUTOUT_HIDDEN_VALIDATOR);
             VALIDATORS.put(BACK_GESTURE_HEIGHT, BACK_GESTURE_HEIGHT_VALIDATOR);
             VALIDATORS.put(BACK_GESTURE_HAPTIC, BACK_GESTURE_HAPTIC_VALIDATOR);
+            VALIDATORS.put(PULSE_AMBIENT_LIGHT_REPEAT_COUNT, PULSE_AMBIENT_LIGHT_REPEAT_COUNT_VALIDATOR);
+            VALIDATORS.put(QS_BACKGROUND_BLUR, QS_BACKGROUND_BLUR_VALIDATOR);
+            VALIDATORS.put(QS_BACKGROUND_BLUR_ALPHA, QS_BACKGROUND_BLUR_ALPHA_VALIDATOR);
+            VALIDATORS.put(QS_BACKGROUND_BLUR_INTENSITY, QS_BACKGROUND_BLUR_INTENSITY_VALIDATOR);
         }
 
         /**

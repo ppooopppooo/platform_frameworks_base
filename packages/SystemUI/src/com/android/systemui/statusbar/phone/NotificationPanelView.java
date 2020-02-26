@@ -678,6 +678,7 @@ public class NotificationPanelView extends PanelView implements
     @Override
     public void onDensityOrFontScaleChanged() {
         updateShowEmptyShadeView();
+        reInflateViews();
     }
 
     @Override
@@ -1307,7 +1308,9 @@ public class NotificationPanelView extends PanelView implements
         if (!mQsExpanded
                 && mDoubleTapToSleepEnabled
                 && event.getY() < mStatusBarHeaderHeight) {
-            mDoubleTapGesture.onTouchEvent(event);
+            if (mDoubleTapGesture.onTouchEvent(event)) {
+                return false;
+            }
         }
         if (mIsLockscreenDoubleTapEnabled && !mPulsing && !mDozing
                 && mBarState == StatusBarState.KEYGUARD) {
@@ -2315,6 +2318,7 @@ public class NotificationPanelView extends PanelView implements
             alpha *= mClockPositionResult.clockAlpha;
         }
         mNotificationStackScroller.setAlpha(alpha);
+        mStatusBar.updateBlurVisibility();
     }
 
     private float getFadeoutAlpha() {

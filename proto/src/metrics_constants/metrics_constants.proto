@@ -7439,5 +7439,8 @@ message MetricsEvent {
     // END OF AOSP CONSTANTS
 
     SYBERIA = 4200;
+
+    // Panel for Mobile Data
+    PANEL_MOBILE_DATA = 4002;
   }
 }

@@ -5091,33 +5091,6 @@ public final class Settings {
                 BOOLEAN_VALIDATOR;
 
         /**
-         * Wheter to show network traffic indicator in statusbar
-         * @hide
-         */
-        public static final String NETWORK_TRAFFIC_STATE = "network_traffic_state";
-        /** @hide */
-        private static final Validator NETWORK_TRAFFIC_STATE_VALIDATOR =
-                BOOLEAN_VALIDATOR;
-
-        /**
-         * Network traffic inactivity threshold (default is 1 kBs)
-         * @hide
-         */
-        public static final String NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD = "network_traffic_autohide_threshold";
-         /** @hide */
-        private static final Validator NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD_VALIDATOR =
-                ANY_INTEGER_VALIDATOR;
-
-        /**
-          * Whether to disable showing arrows in network traffic indicators
-          * @hide
-         */
-        public static final String NETWORK_TRAFFIC_HIDEARROW = "network_traffic_hidearrow";
-         /** @hide */
-        private static final Validator NETWORK_TRAFFIC_HIDEARROW_VALIDATOR =
-                ANY_INTEGER_VALIDATOR;
-
-        /**
          * Applications list where heasdup should't show
          *
          * @hide
@@ -5785,6 +5758,50 @@ public final class Settings {
         private static final Validator ASPECT_RATIO_APPS_ENABLED_VALIDATOR = BOOLEAN_VALIDATOR;
 
         /**
+         * Wheter to show network traffic indicator in statusbar
+         * @hide
+         */
+        public static final String NETWORK_TRAFFIC_STATE = "network_traffic_state";
+
+        /**
+         ** What to show in network traffic indicator in statusbar
+         ** @hide
+         **/
+        public static final String NETWORK_TRAFFIC_TYPE = "network_traffic_type";
+
+        /**
+         * Network traffic inactivity threshold (default is 1 kBs)
+         * @hide
+         */
+        public static final String NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD = "network_traffic_autohide_threshold";
+
+        /**
+         * Whether to disable showing arrows in network traffic indicators
+         * @hide
+         */
+        public static final String NETWORK_TRAFFIC_HIDEARROW = "network_traffic_hidearrow";
+
+        /**
+         ** What size to show for network traffic indicator in statusbar
+         ** @hide
+         **/
+         public static final String NETWORK_TRAFFIC_FONT_SIZE = "network_traffic_font_size";
+
+        /**
+         * Show network traffic indicator
+         * 0 - Statusbar (default)
+         * 1 - QS Header
+         * @hide
+         */
+        public static final String NETWORK_TRAFFIC_VIEW_LOCATION = "network_traffic_view_location";
+
+        /**
+         * Network traffic layout
+         * @hide
+         */
+        public static final String NETWORK_TRAFFIC_LAYOUT = "network_traffic_layout";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *
@@ -5881,9 +5898,6 @@ public final class Settings {
             POWERMENU_LOGOUT,
             POWERMENU_LOCKSCREEN,
             POWERMENU_TORCH,
-            NETWORK_TRAFFIC_STATE,
-            NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD,
-            NETWORK_TRAFFIC_HIDEARROW,
             HEADS_UP_STOPLIST_VALUES,
             HEADS_UP_BLACKLIST_VALUES,
             DOUBLE_TAP_SLEEP_GESTURE,
@@ -6048,6 +6062,13 @@ public final class Settings {
             PRIVATE_SETTINGS.add(BUTTON_BACKLIGHT_TIMEOUT);
             PRIVATE_SETTINGS.add(BUTTON_BACKLIGHT_ONLY_WHEN_PRESSED);
             PRIVATE_SETTINGS.add(BUTTON_BRIGHTNESS);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_STATE);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_TYPE);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_LAYOUT);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_HIDEARROW);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_FONT_SIZE);
+            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_VIEW_LOCATION);
             PRIVATE_SETTINGS.add(ALLOW_INCALL_HOME);
             PRIVATE_SETTINGS.add(VOLUME_ROCKER_WAKE);
             PRIVATE_SETTINGS.add(VOLUME_BUTTON_MUSIC_CONTROL);
@@ -6091,9 +6112,6 @@ public final class Settings {
             PRIVATE_SETTINGS.add(SHOW_FOURG);
             PRIVATE_SETTINGS.add(SHOW_VOLTE_ICON);
             PRIVATE_SETTINGS.add(VOLTE_ICON_STYLE);
-            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_STATE);
-            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD);
-            PRIVATE_SETTINGS.add(NETWORK_TRAFFIC_HIDEARROW);
             PRIVATE_SETTINGS.add(HEADS_UP_STOPLIST_VALUES);
             PRIVATE_SETTINGS.add(HEADS_UP_BLACKLIST_VALUES);
             PRIVATE_SETTINGS.add(DOUBLE_TAP_SLEEP_GESTURE);
@@ -6129,7 +6147,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(PULSE_AMBIENT_AUTO_COLOR);
             PRIVATE_SETTINGS.add(DISPLAY_CUTOUT_HIDDEN);
             PRIVATE_SETTINGS.add(BACK_GESTURE_HEIGHT);
-            PRIVATE_SETTINGS.add(BACK_GESTURE_HAPTIC);	
+            PRIVATE_SETTINGS.add(BACK_GESTURE_HAPTIC);
             PRIVATE_SETTINGS.add(SWAP_VOLUME_BUTTONS);
             PRIVATE_SETTINGS.add(TOAST_ICON);
             PRIVATE_SETTINGS.add(PULSE_AMBIENT_LIGHT_REPEAT_COUNT);
@@ -6280,9 +6298,6 @@ public final class Settings {
             VALIDATORS.put(POWERMENU_LOGOUT, POWERMENU_LOGOUT_VALIDATOR);
             VALIDATORS.put(POWERMENU_LOCKSCREEN, POWERMENU_LOCKSCREEN_VALIDATOR);
             VALIDATORS.put(POWERMENU_TORCH, POWERMENU_TORCH_VALIDATOR);
-            VALIDATORS.put(NETWORK_TRAFFIC_STATE, NETWORK_TRAFFIC_STATE_VALIDATOR);
-            VALIDATORS.put(NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD, NETWORK_TRAFFIC_AUTOHIDE_THRESHOLD_VALIDATOR);
-            VALIDATORS.put(NETWORK_TRAFFIC_HIDEARROW, NETWORK_TRAFFIC_HIDEARROW_VALIDATOR);
             VALIDATORS.put(HEADS_UP_STOPLIST_VALUES, HEADS_UP_STOPLIST_VALUES_VALIDATOR);
             VALIDATORS.put(HEADS_UP_BLACKLIST_VALUES, HEADS_UP_BLACKLIST_VALUES_VALIDATOR);
             VALIDATORS.put(DOUBLE_TAP_SLEEP_GESTURE, DOUBLE_TAP_SLEEP_GESTURE_VALIDATOR);

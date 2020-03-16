@@ -47,7 +47,7 @@ import com.android.systemui.statusbar.StatusBarWifiView;
 import com.android.systemui.statusbar.StatusIconDisplayable;
 import com.android.systemui.statusbar.phone.StatusBarSignalPolicy.MobileIconState;
 import com.android.systemui.statusbar.phone.StatusBarSignalPolicy.WifiIconState;
-import com.android.systemui.statusbar.policy.NetworkTraffic;
+import com.android.systemui.statusbar.policy.NetworkTrafficSB;
 import com.android.systemui.util.Utils.DisableStateTracker;
 
 import java.util.List;
@@ -283,8 +283,8 @@ public interface StatusBarIconController {
             return view;
         }
 
-        protected NetworkTraffic addNetworkTraffic(int index, String slot) {
-            NetworkTraffic view = onCreateNetworkTraffic(slot);
+        protected NetworkTrafficSB addNetworkTraffic(int index, String slot) {
+            NetworkTrafficSB view = onCreateNetworkTraffic(slot);
             mGroup.addView(view, index, onCreateLayoutParams());
             return view;
         }
@@ -315,9 +315,10 @@ public interface StatusBarIconController {
             return view;
         }
 
-        private NetworkTraffic onCreateNetworkTraffic(String slot) {
-            NetworkTraffic view = new NetworkTraffic(mContext);
-            view.setPadding(3, 6, 3, 0);
+        private NetworkTrafficSB onCreateNetworkTraffic(String slot) {
+            NetworkTrafficSB view = new NetworkTrafficSB(mContext);
+            view.setPadding(2, 0, 2, 0);
+            view.setGravity(Gravity.RIGHT | Gravity.CENTER_VERTICAL);
             return view;
         }
 

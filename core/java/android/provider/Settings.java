@@ -4936,9 +4936,9 @@ public final class Settings {
         /** @hide */
         private static final Validator OMNI_QS_LAYOUT_ROWS_VALIDATOR =
                 ANY_INTEGER_VALIDATOR;
-                
         /**
          * @hide
+
          */
         public static final String OMNIJAWS_WEATHER_ICON_PACK = "omnijaws_weather_icon_pack";
 
@@ -4946,13 +4946,6 @@ public final class Settings {
         private static final Validator OMNIJAWS_WEATHER_ICON_PACK_VALIDATOR =
                 ANY_STRING_VALIDATOR;
 
-	
-	/**
-         * Whether to disable showing arrows in network traffic indicators
-         * @hide
-         */
-        public static final String NETWORK_TRAFFIC_HIDEARROW = "network_traffic_hidearrow";
-        
         /**
          * @hide
          */

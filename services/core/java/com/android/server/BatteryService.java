@@ -21,10 +21,12 @@ import static com.android.internal.logging.nano.MetricsProto.MetricsEvent;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.ActivityManagerInternal;
+import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.hardware.health.V1_0.HealthInfo;
 import android.hardware.health.V2_0.IHealth;
@@ -88,6 +90,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+
+import com.android.internal.util.custom.popupcamera.PopUpCameraUtils;
 
 /**
  * <p>BatteryService monitors the charging status, and charge level of the device
@@ -215,6 +219,8 @@ public final class BatteryService extends SystemService {
 
     private MetricsLogger mMetricsLogger;
 
+    private boolean mBatteryLightTempBlocked;
+
     public BatteryService(Context context) {
         super(context);
 
@@ -290,11 +296,28 @@ public final class BatteryService extends SystemService {
         } else if (phase == PHASE_BOOT_COMPLETED) {
             SettingsObserver mObserver = new SettingsObserver(new Handler());
             mObserver.observe();
+            registerBatteryLightOverrideReceiver();
         }
     }
 
     private synchronized void updateLed() {
         mLed.updateLightsLocked();
+    }
+
+    private void registerBatteryLightOverrideReceiver() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(PopUpCameraUtils.ACTION_BATTERY_LED_STATE_OVERRIDE);
+        mContext.registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String action = intent.getAction();
+                if (PopUpCameraUtils.ACTION_BATTERY_LED_STATE_OVERRIDE.equals(action)) {
+                    mBatteryLightTempBlocked =
+                       intent.getExtras().getBoolean(PopUpCameraUtils.EXTRA_OVERRIDE_BATTERY_LED_STATE, false);
+                    updateLed();
+                }
+            }
+        }, filter);
     }
 
     class SettingsObserver extends ContentObserver {
@@ -1223,7 +1246,7 @@ public final class BatteryService extends SystemService {
             }
             final int level = mHealthInfo.batteryLevel;
             final int status = mHealthInfo.batteryStatus;
-            if (!mLightEnabled || (mIsDndActive && !mAllowBatteryLightOnDnd)) {
+            if (mBatteryLightTempBlocked || !mLightEnabled || (mIsDndActive && !mAllowBatteryLightOnDnd)) {
                 mBatteryLight.turnOff();
             } else if (level < mLowBatteryWarningLevel) {
                 if (status == BatteryManager.BATTERY_STATUS_CHARGING) {

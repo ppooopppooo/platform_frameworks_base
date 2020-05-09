@@ -4350,6 +4350,13 @@ public final class Settings {
                 "display_color_mode_vendor_hint";
 
         /**
+        * Whether to play tone while outgoing call is accepted.
+         * The value 1 - vibrate, 0 - not
+         * @hide
+         */
+        public static final String CALL_CONNECTED_TONE_ENABLED = "call_connected_tone_enabled";
+
+        /**
          * The user selected min refresh rate in frames per second.
          *
          * If this isn't set, 0 will be used.
@@ -6487,6 +6494,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(VIBRATE_ON_DISCONNECT);
             PRIVATE_SETTINGS.add(FP_WAKE_UNLOCK);
             PRIVATE_SETTINGS.add(FORCE_FULLSCREEN_CUTOUT_APPS);
+            PRIVATE_SETTINGS.add(CALL_CONNECTED_TONE_ENABLED);
         }
 
         /**

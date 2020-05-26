@@ -511,7 +511,7 @@ public class Process {
      * @param appDataDir null-ok the data directory of the app.
      * @param invokeWith null-ok the command to invoke with.
      * @param packageName null-ok the name of the package this process belongs to.
-     *
+     * @param isTopApp whether the process starts for high priority application.
      * @param zygoteArgs Additional arguments to supply to the zygote process.
      * @return An object that describes the result of the attempt to start the process.
      * @throws RuntimeException on fatal start failure
@@ -530,11 +530,12 @@ public class Process {
                                            @Nullable String appDataDir,
                                            @Nullable String invokeWith,
                                            @Nullable String packageName,
+                                           boolean isTopApp,
                                            @Nullable String[] zygoteArgs) {
         return ZYGOTE_PROCESS.start(processClass, niceName, uid, gid, gids,
                     runtimeFlags, mountExternal, targetSdkVersion, seInfo,
                     abi, instructionSet, appDataDir, invokeWith, packageName,
-                    /*useUsapPool=*/ true, zygoteArgs);
+                    /*useUsapPool=*/ true, isTopApp, zygoteArgs);
     }
 
     /** @hide */
@@ -554,7 +555,7 @@ public class Process {
         return WebViewZygote.getProcess().start(processClass, niceName, uid, gid, gids,
                     runtimeFlags, mountExternal, targetSdkVersion, seInfo,
                     abi, instructionSet, appDataDir, invokeWith, packageName,
-                    /*useUsapPool=*/ false, zygoteArgs);
+                    /*useUsapPool=*/ false, /*isTopApp=*/ false, zygoteArgs);
     }
 
     /**
@@ -809,31 +810,6 @@ public class Process {
      */
     @UnsupportedAppUsage
     public static final native void setProcessGroup(int pid, int group)
-            throws IllegalArgumentException, SecurityException;
-
-    /**
-     * Sets the scheduling group for processes in the same cgroup.procs of uid and pid
-     * @hide
-     * @param uid The user identifier of the process to change.
-     * @param pid The identifier of the process to change.
-     * @param group The target group for this process from THREAD_GROUP_*.
-     * @param dex2oat_only is the cgroup apply for all or for dex2oat only.
-     *
-     * @throws IllegalArgumentException Throws IllegalArgumentException if
-     * <var>tid</var> does not exist.
-     * @throws SecurityException Throws SecurityException if your process does
-     * not have permission to modify the given thread, or to use the given
-     * priority.
-     *
-     * group == THREAD_GROUP_DEFAULT means to move all non-background priority
-     * threads to the foreground scheduling group, but to leave background
-     * priority threads alone.  group == THREAD_GROUP_BG_NONINTERACTIVE moves all
-     * threads, regardless of priority, to the background scheduling group.
-     * group == THREAD_GROUP_FOREGROUND is not allowed.
-     *
-     * Always sets cpusets.
-     */
-    public static final native void setCgroupProcsProcessGroup(int uid, int pid, int group, boolean dex2oat_only)
             throws IllegalArgumentException, SecurityException;
 
     /**

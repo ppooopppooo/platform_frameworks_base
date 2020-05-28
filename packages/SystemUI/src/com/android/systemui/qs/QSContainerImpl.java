@@ -253,11 +253,7 @@ public class QSContainerImpl extends FrameLayout implements
         lp.setMargins(statusBarSideMargin, 0, statusBarSideMargin, 0);
         mStatusBarBackground.setLayoutParams(lp);
 
-        if (mHeaderImageEnabled) {
-            mStatusBarBackground.setBackgroundColor(Color.TRANSPARENT);
-        } else {
-            mStatusBarBackground.setBackgroundColor(Color.BLACK);
-        }
+        mStatusBarBackground.setBackgroundColor(Color.TRANSPARENT);
     }
 
     /**

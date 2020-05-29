@@ -4395,10 +4395,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         boolean notHandledMusicControl = false;
                         if (down) {
                             if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-                                scheduleLongPressKeyEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+                                scheduleLongPressKeyEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
                                 break;
                             } else if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-                                scheduleLongPressKeyEvent(KeyEvent.KEYCODE_MEDIA_NEXT);
+                                scheduleLongPressKeyEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS);
                                 break;
                             }
                         } else {

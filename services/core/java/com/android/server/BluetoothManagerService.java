@@ -92,6 +92,7 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
 
     private static final String BLUETOOTH_ADMIN_PERM = android.Manifest.permission.BLUETOOTH_ADMIN;
     private static final String BLUETOOTH_PERM = android.Manifest.permission.BLUETOOTH;
+    private static final String BLUETOOTH_PRIVILEGED_PERM = android.Manifest.permission.BLUETOOTH_PRIVILEGED;
 
     private static final String SECURE_SETTINGS_BLUETOOTH_ADDR_VALID = "bluetooth_addr_valid";
     private static final String SECURE_SETTINGS_BLUETOOTH_ADDRESS = "bluetooth_address";
@@ -875,6 +876,7 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
             }
             if (isBluetoothPersistedStateOnBluetooth() || !isBleAppPresent()) {
                 // This triggers transition to STATE_ON
+                mBluetooth.updateQuietModeStatus(mQuietEnable);
                 mBluetooth.onLeServiceUp();
                 persistBluetoothSetting(BLUETOOTH_ON_BLUETOOTH);
             }
@@ -1575,6 +1577,33 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
         return mName;
     }
 
+    public boolean factoryReset() {
+        final int callingUid = Binder.getCallingUid();
+        final boolean callerSystem = UserHandle.getAppId(callingUid) == Process.SYSTEM_UID;
+
+        if (!callerSystem) {
+            if (!checkIfCallerIsForegroundUser()) {
+                Slog.w(TAG, "factoryReset(): not allowed for non-active and non system user");
+                return false;
+            }
+
+            mContext.enforceCallingOrSelfPermission(
+                   BLUETOOTH_PRIVILEGED_PERM, "Need BLUETOOTH PRIVILEGED permission");
+        }
+
+        try {
+            if (mBluetooth != null) {
+                // Clear registered LE apps to force shut-off
+                clearBleApps();
+                return mBluetooth.factoryReset();
+            }
+        } catch (RemoteException e) {
+            Slog.e(TAG, "factoryReset(): Unable to do factoryReset.", e);
+            return false;
+        }
+        return true;
+    }
+
     private class BluetoothServiceConnection implements ServiceConnection {
         public void onServiceConnected(ComponentName componentName, IBinder service) {
             String name = componentName.getClassName();
@@ -1584,6 +1613,7 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
             Message msg = mHandler.obtainMessage(MESSAGE_BLUETOOTH_SERVICE_CONNECTED);
             if (name.equals("com.android.bluetooth.btservice.AdapterService")) {
                 msg.arg1 = SERVICE_IBLUETOOTH;
+                mHandler.removeMessages(MESSAGE_TIMEOUT_BIND);
             } else if (name.equals("com.android.bluetooth.gatt.GattService")) {
                 msg.arg1 = SERVICE_IBLUETOOTHGATT;
             } else {
@@ -1669,6 +1699,7 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                     mHandler.removeMessages(MESSAGE_RESTART_BLUETOOTH_SERVICE);
                     mEnable = true;
 
+                    mQuietEnable = (msg.arg1 == 1);
                     // Use service interface to get the exact state
                     try {
                         mBluetoothLock.readLock().lock();
@@ -1676,6 +1707,7 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                             int state = mBluetooth.getState();
                             if (state == BluetoothAdapter.STATE_BLE_ON) {
                                 Slog.w(TAG, "BT Enable in BLE_ON State, going to ON");
+                                mBluetooth.updateQuietModeStatus(mQuietEnable);
                                 mBluetooth.onLeServiceUp();
                                 persistBluetoothSetting(BLUETOOTH_ON_BLUETOOTH);
                                 break;
@@ -1687,7 +1719,6 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                         mBluetoothLock.readLock().unlock();
                     }
 
-                    mQuietEnable = (msg.arg1 == 1);
                     if (mBluetooth == null) {
                         handleEnable(mQuietEnable);
                     } else {
@@ -1816,9 +1847,6 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                             continueFromBleOnState();
                             break;
                         } // else must be SERVICE_IBLUETOOTH
-
-                        //Remove timeout
-                        mHandler.removeMessages(MESSAGE_TIMEOUT_BIND);
 
                         mBinding = false;
                         mBluetoothBinder = service;

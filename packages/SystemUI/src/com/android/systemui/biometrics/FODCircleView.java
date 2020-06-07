@@ -31,6 +31,7 @@ import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.hardware.biometrics.BiometricSourceType;
 import android.net.Uri;
+import android.graphics.PorterDuff;
 import android.os.Handler;
 import android.os.UserHandle;
 import android.os.Looper;
@@ -69,12 +70,34 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
     private static final String FOD_GESTURE = "system:" + Settings.System.FOD_GESTURE;
     private static final int FADE_ANIM_DURATION = 250;
 
+    private final String SCREEN_BRIGHTNESS = "system:" + Settings.System.SCREEN_BRIGHTNESS;
+    private final int[][] BRIGHTNESS_ALPHA_ARRAY = {
+        new int[]{0, 255},
+        new int[]{1, 224},
+        new int[]{2, 213},
+        new int[]{3, 211},
+        new int[]{4, 208},
+        new int[]{5, 206},
+        new int[]{6, 203},
+        new int[]{8, 200},
+        new int[]{10, 196},
+        new int[]{15, 186},
+        new int[]{20, 176},
+        new int[]{30, 160},
+        new int[]{45, 139},
+        new int[]{70, 114},
+        new int[]{100, 90},
+        new int[]{150, 56},
+        new int[]{227, 14},
+        new int[]{255, 0}
+    };
     private final int mPositionX;
     private final int mPositionY;
     private final int mSize;
     private final int mDreamingMaxOffset;
     private final int mNavigationBarSize;
     private final boolean mShouldBoostBrightness;
+    private final boolean mTargetUsesInKernelDimming;
     private final Paint mPaintFingerprintBackground = new Paint();
     private final Paint mPaintFingerprint = new Paint();
     private final WindowManager.LayoutParams mParams = new WindowManager.LayoutParams();
@@ -83,6 +106,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
 
     private IFingerprintInscreen mFingerprintInscreenDaemon;
 
+    private int mCurrentBrightness;
     private int mDreamingOffsetX;
     private int mDreamingOffsetY;
 
@@ -330,6 +354,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
 
         mPaintFingerprint.setAntiAlias(true);
 
+        mTargetUsesInKernelDimming = res.getBoolean(com.android.internal.R.bool.config_targetUsesInKernelDimming);
         mPaintFingerprintBackground.setAntiAlias(true);
 
         mPowerManager = context.getSystemService(PowerManager.class);
@@ -428,10 +453,47 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
 
     @Override
     public void onTuningChanged(String key, String newValue) {
+        mCurrentBrightness = newValue != null ? Integer.parseInt(newValue) : 0;
+        updateIconDim();
+        
         if (key.equals(FOD_GESTURE)) {
             mFodGestureEnable = TunerService.parseIntegerSwitch(newValue, false);
         } else {
             mDozeEnabled = TunerService.parseIntegerSwitch(newValue, true);
+        }
+    }
+
+    private int interpolate(int i, int i2, int i3, int i4, int i5) {
+        int i6 = i5 - i4;
+        int i7 = i - i2;
+        int i8 = ((i6 * 2) * i7) / (i3 - i2);
+        int i9 = i8 / 2;
+        int i10 = i2 - i3;
+        return i4 + i9 + (i8 % 2) + ((i10 == 0 || i6 == 0) ? 0 : (((i7 * 2) * (i - i3)) / i6) / i10);
+    }
+
+    private int getDimAlpha() {
+        int length = BRIGHTNESS_ALPHA_ARRAY.length;
+        int i = 0;
+        while (i < length && BRIGHTNESS_ALPHA_ARRAY[i][0] < mCurrentBrightness) {
+            i++;
+        }
+        if (i == 0) {
+            return BRIGHTNESS_ALPHA_ARRAY[0][1];
+        }
+        if (i == length) {
+            return BRIGHTNESS_ALPHA_ARRAY[length - 1][1];
+        }
+        int[][] iArr = BRIGHTNESS_ALPHA_ARRAY;
+        int i2 = i - 1;
+        return interpolate(mCurrentBrightness, iArr[i2][0], iArr[i][0], iArr[i2][1], iArr[i][1]);
+    }
+
+    public void updateIconDim() {
+        if (!mIsCircleShowing && mTargetUsesInKernelDimming) {
+            setColorFilter(Color.argb(getDimAlpha(), 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
+        } else {
+            setColorFilter(Color.argb(0, 0, 0, 0), PorterDuff.Mode.SRC_ATOP);
         }
     }
 
@@ -540,6 +602,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
         mPressedView.setImageResource(R.drawable.fod_icon_pressed);
 
         setImageDrawable(null);
+        updateIconDim();
         invalidate();
     }
 
@@ -586,6 +649,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
 
         updatePosition();
 
+        Dependency.get(TunerService.class).addTunable(this, SCREEN_BRIGHTNESS);
         setVisibility(View.VISIBLE);
         animate().withStartAction(() -> mFading = true)
                 .alpha(mIsDreaming ? 0.5f : 1.0f)
@@ -604,6 +668,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
                     mFading = false;
                 })
                 .start();
+        Dependency.get(TunerService.class).removeTunable(this);
         hideCircle();
         dispatchHide();
     }

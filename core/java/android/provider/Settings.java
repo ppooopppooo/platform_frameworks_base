@@ -131,7 +131,7 @@ public final class Settings {
      */
     @SdkConstant(SdkConstantType.ACTIVITY_INTENT_ACTION)
     public static final String SCREEN_STABILIZATION_SETTINGS = "android.settings.SCREEN_STABILIZATION";
-    
+
     /**
      * Activity Action: Show settings to allow configuration of APNs.
      * <p>
@@ -3372,7 +3372,7 @@ public final class Settings {
             "bluetooth_discoverability";
 
         private static final Validator BLUETOOTH_DISCOVERABILITY_VALIDATOR =
-                new SettingsValidators.InclusiveIntegerRangeValidator(0, 2);
+                new SettingsValidators.InclusiveIntegerRangeValidator(0, 6);
 
         /**
          * Bluetooth discoverability timeout.  If this value is nonzero, then
@@ -5574,7 +5574,7 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_QUICK_QS_PULLDOWN = "status_bar_quick_qs_pulldown";
-	
+
 	/**
          * Status bar carrier label
          * 0: Hide
@@ -5675,17 +5675,14 @@ public final class Settings {
          */
         public static final String FOD_ICON = "fod_icon";
 
+        /** @hide */
+        private static final Validator FOD_ICON_VALIDATOR = ANY_STRING_VALIDATOR;
+
         /**
          * Whether to vibrate on notifications
          * @hide
          */
         public static final String VIBRATE_ON_NOTIFICATIONS = "vibrate_on_notifications";
-
-        /**
-         * FOD pressed state
-         * @hide
-         */
-        public static final String FOD_PRESSED_STATE = "fod_pressed_state";
 
         /**
          * Use doubletap as doze pulse triggers
@@ -5719,7 +5716,7 @@ public final class Settings {
 
         /** @hide */
         private static final Validator QS_BACKGROUND_BLUR_INTENSITY_VALIDATOR = ANY_INTEGER_VALIDATOR;
-	
+
 	/**
          * @hide
          */
@@ -6044,6 +6041,34 @@ public final class Settings {
                 ANY_STRING_VALIDATOR;
 
         /**
+         * FOD pressed state
+         * @hide
+         */
+        public static final String FOD_PRESSED_STATE = "fod_pressed_state";
+
+        /** @hide */
+        private static final Validator FOD_PRESSED_STATE_VALIDATOR =
+                new SettingsValidators.InclusiveIntegerRangeValidator(0, 6);
+
+        /**
+         * Which Vibration Pattern to use
+         * 0: dzzz-dzzz
+         * 1: dzzz-da
+         * 2: mm-mm-mm
+         * 3: da-da-dzzz
+         * 4: da-dzzz-da
+         * @hide
+         */
+        public static final String RINGTONE_VIBRATION_PATTERN = "ringtone_vibration_pattern";
+
+        /**
+         * Sensor blocked packages
+         * @hide
+         */
+        public static final String SENSOR_BLOCKED_APP = "sensor_blocked_app";
+        public static final String SENSOR_BLOCKED_APP_DUMMY = "sensor_blocked_app_dummy";
+
+        /**
          * Settings to backup. This is here so that it's in the same place as the settings
          * keys and easy to update.
          *
@@ -6189,7 +6214,9 @@ public final class Settings {
             OMNI_STATUS_BAR_DAYLIGHT_HEADER_PACK,
             OMNI_STATUS_BAR_CUSTOM_HEADER_PROVIDER,
             OMNI_STATUS_BAR_CUSTOM_HEADER_IMAGE,
-            OMNI_STATUS_BAR_FILE_HEADER_IMAGE
+            OMNI_STATUS_BAR_FILE_HEADER_IMAGE,
+            FOD_ICON,
+            FOD_PRESSED_STATE,
         };
 
         /**
@@ -6620,6 +6647,8 @@ public final class Settings {
                     OMNI_STATUS_BAR_CUSTOM_HEADER_IMAGE_VALIDATOR);
             VALIDATORS.put(OMNI_STATUS_BAR_FILE_HEADER_IMAGE,
                     OMNI_STATUS_BAR_FILE_HEADER_IMAGE_VALIDATOR);
+            VALIDATORS.put(FOD_ICON, FOD_ICON_VALIDATOR);
+            VALIDATORS.put(FOD_PRESSED_STATE, FOD_PRESSED_STATE_VALIDATOR);
         }
 
         /**
@@ -15883,11 +15912,11 @@ public final class Settings {
         private static final Validator POWER_BUTTON_VERY_LONG_PRESS_VALIDATOR =
                 new SettingsValidators.InclusiveIntegerRangeValidator(0, 1);
 
-        /**  
+        /**
          * AOKP Custom System Animations
          * @hide
-         */  
-        public static final String[] ACTIVITY_ANIMATION_CONTROLS = new String[] {  
+         */
+        public static final String[] ACTIVITY_ANIMATION_CONTROLS = new String[] {
                 "activity_open",
                 "activity_close",
                 "task_open",

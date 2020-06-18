@@ -35,6 +35,7 @@ import android.system.ErrnoException;
 import android.system.Os;
 import android.util.Log;
 
+import dalvik.annotation.optimization.FastNative;
 import dalvik.system.ZygoteHooks;
 
 import libcore.io.IoUtils;
@@ -49,9 +50,9 @@ import java.io.InputStreamReader;
 /** @hide */
 public final class Zygote {
     /*
-    * Bit values for "runtimeFlags" argument.  The definitions are duplicated
-    * in the native code.
-    */
+     * Bit values for "runtimeFlags" argument.  The definitions are duplicated
+     * in the native code.
+     */
 
     /** enable debugging over JDWP */
     public static final int DEBUG_ENABLE_JDWP   = 1;
@@ -175,6 +176,11 @@ public final class Zygote {
      */
     public static final int SOCKET_BUFFER_SIZE = 256;
 
+    /**
+     * @hide for internal use only
+     */
+    private static final int PRIORITY_MAX = -20;
+
     /** a prototype instance for a future List.toArray() */
     protected static final int[][] INT_ARRAY_2D = new int[0][0];
 
@@ -240,8 +246,7 @@ public final class Zygote {
             int[] fdsToIgnore, boolean startChildZygote, String instructionSet, String appDataDir,
             int targetSdkVersion, boolean isTopApp) {
         ZygoteHooks.preFork();
-        // Resets nice priority for zygote process.
-        resetNicePriority();
+
         int pid = nativeForkAndSpecialize(
                 uid, gid, gids, runtimeFlags, rlimits, mountExternal, seInfo, niceName, fdsToClose,
                 fdsToIgnore, startChildZygote, instructionSet, appDataDir, isTopApp);
@@ -253,6 +258,7 @@ public final class Zygote {
             // Note that this event ends at the end of handleChildProc,
             Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "PostFork");
         }
+
         ZygoteHooks.postForkCommon();
         return pid;
     }
@@ -340,15 +346,16 @@ public final class Zygote {
     public static int forkSystemServer(int uid, int gid, int[] gids, int runtimeFlags,
             int[][] rlimits, long permittedCapabilities, long effectiveCapabilities) {
         ZygoteHooks.preFork();
-        // Resets nice priority for zygote process.
-        resetNicePriority();
+
         int pid = nativeForkSystemServer(
                 uid, gid, gids, runtimeFlags, rlimits,
                 permittedCapabilities, effectiveCapabilities);
+
         // Enable tracing as soon as we enter the system_server.
         if (pid == 0) {
             Trace.setTracingEnabled(true, runtimeFlags);
         }
+
         ZygoteHooks.postForkCommon();
         return pid;
     }
@@ -466,13 +473,16 @@ public final class Zygote {
     /**
      * Fork a new unspecialized app process from the zygote
      *
+     * @param usapPoolSocket  The server socket the USAP will call accept on
      * @param sessionSocketRawFDs  Anonymous session sockets that are currently open
+     * @param isPriorityFork  Value controlling the process priority level until accept is called
      * @return In the Zygote process this function will always return null; in unspecialized app
      *         processes this function will return a Runnable object representing the new
      *         application that is passed up from usapMain.
      */
     static Runnable forkUsap(LocalServerSocket usapPoolSocket,
-                             int[] sessionSocketRawFDs) {
+                             int[] sessionSocketRawFDs,
+                             boolean isPriorityFork) {
         FileDescriptor[] pipeFDs = null;
 
         try {
@@ -482,7 +492,8 @@ public final class Zygote {
         }
 
         int pid =
-                nativeForkUsap(pipeFDs[0].getInt$(), pipeFDs[1].getInt$(), sessionSocketRawFDs);
+                nativeForkUsap(pipeFDs[0].getInt$(), pipeFDs[1].getInt$(),
+                               sessionSocketRawFDs, isPriorityFork);
 
         if (pid == 0) {
             IoUtils.closeQuietly(pipeFDs[0]);
@@ -496,8 +507,9 @@ public final class Zygote {
     }
 
     private static native int nativeForkUsap(int readPipeFD,
-                                                 int writePipeFD,
-                                                 int[] sessionSocketRawFDs);
+                                             int writePipeFD,
+                                             int[] sessionSocketRawFDs,
+                                             boolean isPriorityFork);
 
     /**
      * This function is used by unspecialized app processes to wait for specialization requests from
@@ -508,7 +520,7 @@ public final class Zygote {
      * @return A runnable oject representing the new application.
      */
     private static Runnable usapMain(LocalServerSocket usapPoolSocket,
-                                     FileDescriptor writePipe) {
+            FileDescriptor writePipe) {
         final int pid = Process.myPid();
         Process.setArgV0(Process.is64Bit() ? "usap64" : "usap32");
 
@@ -516,6 +528,11 @@ public final class Zygote {
         DataOutputStream usapOutputStream = null;
         Credentials peerCredentials = null;
         ZygoteArguments args = null;
+
+        // Change the priority to max before calling accept so we can respond to new specialization
+        // requests as quickly as possible.  This will be reverted to the default priority in the
+        // native specialization code.
+        boostUsapPriority();
 
         while (true) {
             try {
@@ -558,6 +575,7 @@ public final class Zygote {
         try {
             // SIGTERM is blocked on loop exit.  This prevents a USAP that is specializing from
             // being killed during a pool flush.
+            setAppProcessName(args, "USAP");
 
             applyUidSecurityPolicy(args, peerCredentials);
             applyDebuggerSystemProperty(args);
@@ -618,22 +636,18 @@ public final class Zygote {
             }
 
             specializeAppProcess(args.mUid, args.mGid, args.mGids,
-                                 args.mRuntimeFlags, rlimits, args.mMountExternal,
-                                 args.mSeInfo, args.mNiceName, args.mStartChildZygote,
-                                 args.mInstructionSet, args.mAppDataDir, args.mIsTopApp);
+                    args.mRuntimeFlags, rlimits, args.mMountExternal,
+                    args.mSeInfo, args.mNiceName, args.mStartChildZygote,
+                    args.mInstructionSet, args.mAppDataDir, args.mIsTopApp);
 
             disableExecuteOnly(args.mTargetSdkVersion);
-
-            if (args.mNiceName != null) {
-                Process.setArgV0(args.mNiceName);
-            }
 
             // End of the postFork event.
             Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
 
             return ZygoteInit.zygoteInit(args.mTargetSdkVersion,
-                                         args.mRemainingArgs,
-                                         null /* classLoader */);
+                    args.mRemainingArgs,
+                    null /* classLoader */);
         } finally {
             // Unblock SIGTERM to restore the process to default behavior.
             unblockSigTerm();
@@ -651,6 +665,22 @@ public final class Zygote {
     }
 
     private static native void nativeUnblockSigTerm();
+
+    private static void boostUsapPriority() {
+        nativeBoostUsapPriority();
+    }
+
+    private static native void nativeBoostUsapPriority();
+
+    static void setAppProcessName(ZygoteArguments args, String loggingTag) {
+        if (args.mNiceName != null) {
+            Process.setArgV0(args.mNiceName);
+        } else if (args.mPackageName != null) {
+            Process.setArgV0(args.mPackageName);
+        } else {
+            Log.w(loggingTag, "Unable to set package name.");
+        }
+    }
 
     private static final String USAP_ERROR_PREFIX = "Invalid command to USAP: ";
 
@@ -674,7 +704,7 @@ public final class Zygote {
             throw new IllegalArgumentException(USAP_ERROR_PREFIX + "--start-child-zygote");
         } else if (args.mApiBlacklistExemptions != null) {
             throw new IllegalArgumentException(
-                USAP_ERROR_PREFIX + "--set-api-blacklist-exemptions");
+                    USAP_ERROR_PREFIX + "--set-api-blacklist-exemptions");
         } else if (args.mHiddenApiAccessLogSampleRate != -1) {
             throw new IllegalArgumentException(
                     USAP_ERROR_PREFIX + "--hidden-api-log-sampling-rate=");
@@ -685,8 +715,8 @@ public final class Zygote {
             throw new IllegalArgumentException(USAP_ERROR_PREFIX + "--invoke-with");
         } else if (args.mPermittedCapabilities != 0 || args.mEffectiveCapabilities != 0) {
             throw new ZygoteSecurityException("Client may not specify capabilities: "
-                + "permitted=0x" + Long.toHexString(args.mPermittedCapabilities)
-                + ", effective=0x" + Long.toHexString(args.mEffectiveCapabilities));
+                    + "permitted=0x" + Long.toHexString(args.mPermittedCapabilities)
+                    + ", effective=0x" + Long.toHexString(args.mEffectiveCapabilities));
         }
     }
 
@@ -743,7 +773,7 @@ public final class Zygote {
             if (uidRestricted && args.mUidSpecified && (args.mUid < Process.SYSTEM_UID)) {
                 throw new ZygoteSecurityException(
                         "System UID may not launch process with UID < "
-                        + Process.SYSTEM_UID);
+                                + Process.SYSTEM_UID);
             }
         }
 
@@ -793,8 +823,8 @@ public final class Zygote {
         if (args.mInvokeWith != null && peerUid != 0
                 && (args.mRuntimeFlags & Zygote.DEBUG_ENABLE_JDWP) == 0) {
             throw new ZygoteSecurityException("Peer is permitted to specify an "
-                + "explicit invoke-with wrapper command only for debuggable "
-                + "applications.");
+                    + "explicit invoke-with wrapper command only for debuggable "
+                    + "applications.");
         }
     }
 
@@ -877,7 +907,7 @@ public final class Zygote {
             return new LocalServerSocket(fd);
         } catch (IOException ex) {
             throw new RuntimeException(
-                "Error building socket from file descriptor: " + fileDesc, ex);
+                    "Error building socket from file descriptor: " + fileDesc, ex);
         }
     }
 
@@ -889,15 +919,6 @@ public final class Zygote {
     private static void callPostForkChildHooks(int runtimeFlags, boolean isSystemServer,
             boolean isZygote, String instructionSet) {
         ZygoteHooks.postForkChild(runtimeFlags, isSystemServer, isZygote, instructionSet);
-    }
-
-    /**
-     * Resets the calling thread priority to the default value (Thread.NORM_PRIORITY
-     * or nice value 0). This updates both the priority value in java.lang.Thread and
-     * the nice value (setpriority).
-     */
-    static void resetNicePriority() {
-        Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
     }
 
     /**
@@ -930,4 +951,19 @@ public final class Zygote {
             command.append(" '").append(arg.replace("'", "'\\''")).append("'");
         }
     }
+
+    /**
+     * Parse the given unsolicited zygote message as type SIGCHLD,
+     * extract the payload information into the given output buffer.
+     *
+     * @param in The unsolicited zygote message to be parsed
+     * @param length The number of bytes in the message
+     * @param out The output buffer where the payload information will be placed
+     * @return Number of elements being place into output buffer, or -1 if
+     *         either the message is malformed or not the type as expected here.
+     *
+     * @hide
+     */
+    @FastNative
+    public static native int nativeParseSigChld(byte[] in, int length, int[] out);
 }

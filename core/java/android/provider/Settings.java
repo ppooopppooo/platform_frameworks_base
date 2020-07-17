@@ -4076,6 +4076,15 @@ public final class Settings {
         public static final Validator SETUP_WIZARD_HAS_RUN_VALIDATOR = BOOLEAN_VALIDATOR;
 
         /**
+         * Show the pending notification counts as overlays on the status bar
+         * @hide
+         */
+        public static final String STATUS_BAR_NOTIF_COUNT = "status_bar_notif_count";
+
+        /** @hide */
+        public static final Validator STATUS_BAR_NOTIF_COUNT_VALIDATOR = BOOLEAN_VALIDATOR;
+
+        /**
          * Scaling factor for normal window animations. Setting to 0 will disable window
          * animations.
          *
@@ -4604,6 +4613,13 @@ public final class Settings {
 
         /** @hide */
         public static final Validator BUTTON_BRIGHTNESS_VALIDATOR = NON_NEGATIVE_INTEGER_VALIDATOR;
+
+	/**
+         * The amount of time in milliseconds before the device goes to sleep or begins
+         * to dream after a period of inactivity in the keyguard.
+         * @hide
+         */
+        public static final String LOCKSCREEN_TIMEOUT = "lockscreen_timeout";
 
         /**
          * IMPORTANT: If you add a new public settings you also have to add it to
@@ -6144,6 +6160,7 @@ public final class Settings {
             RINGTONE,
             LOCK_TO_APP_ENABLED,
             NOTIFICATION_SOUND,
+            STATUS_BAR_NOTIF_COUNT,
             ACCELEROMETER_ROTATION,
             NOTIFICATION_VIBRATION_INTENSITY,
             RING_VIBRATION_INTENSITY,
@@ -6298,6 +6315,7 @@ public final class Settings {
             PUBLIC_SETTINGS.add(TIME_12_24);
             PUBLIC_SETTINGS.add(DATE_FORMAT);
             PUBLIC_SETTINGS.add(SETUP_WIZARD_HAS_RUN);
+            PUBLIC_SETTINGS.add(STATUS_BAR_NOTIF_COUNT);
             PUBLIC_SETTINGS.add(ACCELEROMETER_ROTATION);
             PUBLIC_SETTINGS.add(USER_ROTATION);
             PUBLIC_SETTINGS.add(DTMF_TONE_WHEN_DIALING);
@@ -6508,6 +6526,7 @@ public final class Settings {
             VALIDATORS.put(TIME_12_24, TIME_12_24_VALIDATOR);
             VALIDATORS.put(DATE_FORMAT, DATE_FORMAT_VALIDATOR);
             VALIDATORS.put(SETUP_WIZARD_HAS_RUN, SETUP_WIZARD_HAS_RUN_VALIDATOR);
+            VALIDATORS.put(STATUS_BAR_NOTIF_COUNT, STATUS_BAR_NOTIF_COUNT_VALIDATOR);
             VALIDATORS.put(ACCELEROMETER_ROTATION, ACCELEROMETER_ROTATION_VALIDATOR);
             VALIDATORS.put(USER_ROTATION, USER_ROTATION_VALIDATOR);
             VALIDATORS.put(DTMF_TONE_WHEN_DIALING, DTMF_TONE_WHEN_DIALING_VALIDATOR);

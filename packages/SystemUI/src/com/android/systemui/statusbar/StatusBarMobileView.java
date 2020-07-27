@@ -186,8 +186,9 @@ public class StatusBarMobileView extends FrameLayout implements DarkReceiver,
         boolean needsLayout = false;
 
         setContentDescription(state.contentDescription);
-        if (mState.visible != state.visible) {
-            mMobileGroup.setVisibility(state.visible ? View.VISIBLE : View.GONE);
+        if (mState.visible != state.visible || mState.provisioned != state.provisioned) {
+            mMobileGroup.setVisibility(state.visible && state.provisioned
+                    ? View.VISIBLE : View.GONE);
             needsLayout = true;
         }
         if (state.strengthId > 0) {
@@ -290,13 +291,17 @@ public class StatusBarMobileView extends FrameLayout implements DarkReceiver,
         mVisibleState = state;
         switch (state) {
             case STATE_ICON:
-                mMobileGroup.setVisibility(View.VISIBLE);
-                mDotView.setVisibility(View.GONE);
-                break;
+                if (mState == null || (mState.visible && mState.provisioned)) {
+                    mMobileGroup.setVisibility(View.VISIBLE);
+                    mDotView.setVisibility(View.GONE);
+                    break;
+                }
             case STATE_DOT:
-                mMobileGroup.setVisibility(View.INVISIBLE);
-                mDotView.setVisibility(View.VISIBLE);
-                break;
+                if (mState == null || (mState.visible && mState.provisioned)) {
+                    mMobileGroup.setVisibility(View.INVISIBLE);
+                    mDotView.setVisibility(View.VISIBLE);
+                    break;
+                }
             case STATE_HIDDEN:
             default:
                 mMobileGroup.setVisibility(View.GONE);

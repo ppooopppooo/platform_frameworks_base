@@ -19,6 +19,7 @@ package com.android.systemui.syberia
 import com.android.systemui.qs.tileimpl.QSTileImpl
 import com.android.systemui.qs.tiles.LiveDisplayTile
 import com.android.systemui.qs.tiles.ReadingModeTile
+import com.android.systemui.qs.tiles.AntiFlickerTile
 import com.android.systemui.qs.tiles.DataSwitchTile
 
 import dagger.Binds
@@ -39,6 +40,12 @@ interface SyberiaModule {
     @IntoMap
     @StringKey(ReadingModeTile.TILE_SPEC)
     fun bindReadingModeTile(readingModeTile: ReadingModeTile): QSTileImpl<*>
+
+    /** Inject AntiFlickerTile into tileMap in QSModule */
+    @Binds
+    @IntoMap
+    @StringKey(AntiFlickerTile.TILE_SPEC)
+    fun bindAntiFlickerTile(antiFlickerTile: AntiFlickerTile): QSTileImpl<*>
 
     /** Inject DataSwitchTile into tileMap in QSModule */
     @Binds

@@ -84,6 +84,9 @@ class DoubleLineTileLayout(
         return false
     }
 
+    override fun setSidePadding(paddingStart : Int, paddingEnd : Int) {
+    }
+
     override fun setListening(listening: Boolean) {
         if (_listening == listening) return
         _listening = listening
@@ -110,6 +113,8 @@ class DoubleLineTileLayout(
     override fun onFinishInflate() {
         updateResources()
     }
+
+    override fun updateSettings() { }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
 

@@ -140,6 +140,16 @@ public class QuickQSPanel extends QSPanel {
     }
 
     @Override
+    public void setContentMargins(int startMargin, int endMargin) {
+        super.setContentMargins(startMargin, endMargin);
+        View tilesView = (View) mTileLayout;
+        tilesView.setPaddingRelative(startMargin - getVisualTilePadding(),
+                tilesView.getPaddingTop(),
+                endMargin - getVisualTilePadding(),
+                tilesView.getPaddingBottom());
+    }
+
+    @Override
     protected String getDumpableTag() {
         return TAG;
     }
@@ -401,6 +411,10 @@ public class QuickQSPanel extends QSPanel {
                 return getPaddingStart() + mCellMarginHorizontal;
             }
             return getPaddingStart() + column *  (mCellWidth + mCellMarginHorizontal);
+	}
+
+        @Override
+        public void updateSettings() {
         }
 
         @Override

@@ -1224,12 +1224,10 @@ public final class BluetoothAdapter {
     public boolean factoryReset() {
         try {
             mServiceLock.readLock().lock();
-            if (mService != null && mService.factoryReset()
-                    && mManagerService != null && mManagerService.onFactoryReset()) {
-                return true;
+            if (mManagerService != null) {
+                SystemProperties.set("persist.bluetooth.factoryreset", "true");
+                return mManagerService.factoryReset();
             }
-            Log.e(TAG, "factoryReset(): Setting persist.bluetooth.factoryreset to retry later");
-            SystemProperties.set("persist.bluetooth.factoryreset", "true");
         } catch (RemoteException e) {
             Log.e(TAG, "", e);
         } finally {
@@ -3096,6 +3094,22 @@ public final class BluetoothAdapter {
         @Override
         public void onBluetoothStateChange(boolean on) {
             mCallback.onBluetoothStateChange(on);
+        }
+    }
+
+    /**
+     * @hide
+     */
+    public void unregisterAdapter() {
+        try {
+            //mServiceLock.writeLock().lock();
+            if (mManagerService != null){
+                mManagerService.unregisterAdapter(mManagerCallback);
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "", e);
+        } finally {
+            //mServiceLock.writeLock().unlock();
         }
     }
 

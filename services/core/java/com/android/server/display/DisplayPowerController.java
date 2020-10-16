@@ -21,6 +21,7 @@ import android.animation.ObjectAnimator;
 import android.annotation.Nullable;
 import android.annotation.UserIdInt;
 import android.app.ActivityManager;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.ParceledListSlice;
 import android.content.res.Resources;
@@ -118,6 +119,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
     private static final int MSG_CONFIGURE_BRIGHTNESS = 5;
     private static final int MSG_SET_TEMPORARY_BRIGHTNESS = 6;
     private static final int MSG_SET_TEMPORARY_AUTO_BRIGHTNESS_ADJUSTMENT = 7;
+    private static final int MSG_IGNORE_PROXIMITY = 8;
 
     private static final int PROXIMITY_UNKNOWN = -1;
     private static final int PROXIMITY_NEGATIVE = 0;
@@ -267,6 +269,11 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
     // go to sleep by the user.  While true, the screen remains off.
     private boolean mWaitingForNegativeProximity;
 
+    // True if the device should not take into account the proximity sensor
+    // until either the proximity sensor state changes, or there is no longer a
+    // request to listen to proximity sensor.
+    private boolean mIgnoreProximityUntilChanged;
+
     // The actual proximity sensor threshold value.
     private float mProximityThreshold;
 
@@ -398,6 +405,14 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
     // the float brightness value and vice versa.
     @Nullable
     private final BrightnessSynchronizer mBrightnessSynchronizer;
+
+    private ContentResolver mContentResolver;
+
+    // Screen-off animation
+    private int mScreenOffAnimation;
+    static final int SCREEN_OFF_FADE = 0;
+    static final int SCREEN_OFF_CRT = 1;
+    static final int SCREEN_OFF_SCALE = 2;
 
     /**
      * Creates the display power controller.
@@ -679,11 +694,51 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
         }
     }
 
+    private int getScreenAnimationModeForDisplayState(int displayState) {
+        switch (mScreenOffAnimation) {
+            case SCREEN_OFF_FADE:
+                return ScreenStateAnimator.MODE_FADE;
+            case SCREEN_OFF_CRT:
+                if (displayState == Display.STATE_OFF) {
+                    return ScreenStateAnimator.MODE_COOL_DOWN;
+                } else {
+                    return USE_COLOR_FADE_ON_ANIMATION ? ScreenStateAnimator.MODE_WARM_UP
+                            : ScreenStateAnimator.MODE_FADE;
+                }
+            case SCREEN_OFF_SCALE:
+                if (displayState == Display.STATE_OFF) {
+                    return ScreenStateAnimator.MODE_SCALE_DOWN;
+                } else {
+                    return ScreenStateAnimator.MODE_FADE;
+                }
+            default:
+                return ScreenStateAnimator.MODE_FADE;
+        }
+    }
+
     private void initialize() {
         // Initialize the power state object for the default display.
         // In the future, we might manage multiple displays independently.
-        mPowerState = new DisplayPowerState(mBlanker,
-                mColorFadeEnabled ? new ColorFade(Display.DEFAULT_DISPLAY) : null);
+        final ContentResolver cr = mContext.getContentResolver();
+        final ContentObserver observer = new ContentObserver(mHandler) {
+            @Override
+            public void onChange(boolean selfChange, Uri uri) {
+                mScreenOffAnimation = Settings.System.getIntForUser(cr,
+                        Settings.System.SCREEN_OFF_ANIMATION,
+                        SCREEN_OFF_FADE, UserHandle.USER_CURRENT);
+                if (mPowerState != null) {
+                    mPowerState.setScreenStateAnimator(mScreenOffAnimation);
+                }
+            }
+        };
+        cr.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.SCREEN_OFF_ANIMATION),
+                false, observer, UserHandle.USER_ALL);
+        mScreenOffAnimation = Settings.System.getIntForUser(cr,
+                Settings.System.SCREEN_OFF_ANIMATION,
+                SCREEN_OFF_FADE, UserHandle.USER_CURRENT);
+
+        mPowerState = new DisplayPowerState(mBlanker, mScreenOffAnimation);
 
         if (mColorFadeEnabled) {
             mColorFadeOnAnimator = ObjectAnimator.ofFloat(
@@ -765,8 +820,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
 
             if (mPowerRequest == null) {
                 mPowerRequest = new DisplayPowerRequest(mPendingRequestLocked);
-                mWaitingForNegativeProximity = mPendingWaitForNegativeProximityLocked;
-                mPendingWaitForNegativeProximityLocked = false;
+                updatePendingProximityRequestsLocked();
                 mPendingRequestChangedLocked = false;
                 mustInitialize = true;
                 // Assume we're on and bright until told otherwise, since that's the state we turn
@@ -775,8 +829,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
             } else if (mPendingRequestChangedLocked) {
                 previousPolicy = mPowerRequest.policy;
                 mPowerRequest.copyFrom(mPendingRequestLocked);
-                mWaitingForNegativeProximity |= mPendingWaitForNegativeProximityLocked;
-                mPendingWaitForNegativeProximityLocked = false;
+                updatePendingProximityRequestsLocked();
                 mPendingRequestChangedLocked = false;
                 mDisplayReadyLocked = false;
             } else {
@@ -827,9 +880,16 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
         // Apply the proximity sensor.
         if (mProximitySensor != null) {
             if (mPowerRequest.useProximitySensor && state != Display.STATE_OFF) {
+                // At this point the policy says that the screen should be on, but we've been
+                // asked to listen to the prox sensor to adjust the display state, so lets make
+                // sure the sensor is on.
                 setProximitySensorEnabled(true);
                 if (!mScreenOffBecauseOfProximity
-                        && mProximity == PROXIMITY_POSITIVE) {
+                        && mProximity == PROXIMITY_POSITIVE
+                        && !mIgnoreProximityUntilChanged) {
+                    // Prox sensor already reporting "near" so we should turn off the screen.
+                    // Also checked that we aren't currently set to ignore the proximity sensor
+                    // temporarily.
                     mScreenOffBecauseOfProximity = true;
                     sendOnProximityPositiveWithWakelock();
                 }
@@ -837,18 +897,28 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                     && mScreenOffBecauseOfProximity
                     && mProximity == PROXIMITY_POSITIVE
                     && state != Display.STATE_OFF) {
+                // The policy says that we should have the screen on, but it's off due to the prox
+                // and we've been asked to wait until the screen is far from the user to turn it
+                // back on. Let keep the prox sensor on so we can tell when it's far again.
                 setProximitySensorEnabled(true);
             } else {
+                // We haven't been asked to use the prox sensor and we're not waiting on the screen
+                // to turn back on...so lets shut down the prox sensor.
                 setProximitySensorEnabled(false);
                 mWaitingForNegativeProximity = false;
             }
+
             if (mScreenOffBecauseOfProximity
-                    && mProximity != PROXIMITY_POSITIVE) {
+                    && (mProximity != PROXIMITY_POSITIVE || mIgnoreProximityUntilChanged)) {
+                // The screen *was* off due to prox being near, but now it's "far" so lets turn
+                // the screen back on.  Also turn it back on if we've been asked to ignore the
+                // prox sensor temporarily.
                 mScreenOffBecauseOfProximity = false;
                 sendOnProximityNegativeWithWakelock();
             }
         } else {
             mWaitingForNegativeProximity = false;
+            mIgnoreProximityUntilChanged = false;
         }
         if (mScreenOffBecauseOfProximity) {
             state = Display.STATE_OFF;
@@ -1193,6 +1263,14 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
         sendUpdatePowerState();
     }
 
+    /**
+     * Ignores the proximity sensor until the sensor state changes, but only if the sensor is
+     * currently enabled and forcing the screen to be dark.
+     */
+    public void ignoreProximitySensorUntilChanged() {
+        mHandler.sendEmptyMessage(MSG_IGNORE_PROXIMITY);
+    }
+
     public void setBrightnessConfiguration(BrightnessConfiguration c) {
         Message msg = mHandler.obtainMessage(MSG_CONFIGURE_BRIGHTNESS, c);
         msg.sendToTarget();
@@ -1378,7 +1456,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
             // Skip the screen off animation and add a black surface to hide the
             // contents of the screen.
             mPowerState.prepareColorFade(mContext,
-                    mColorFadeFadesConfig ? ColorFade.MODE_FADE : ColorFade.MODE_WARM_UP);
+                    getScreenAnimationModeForDisplayState(Display.STATE_ON));
             if (mColorFadeOffAnimator != null) {
                 mColorFadeOffAnimator.end();
             }
@@ -1411,9 +1489,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 if (mPowerState.getColorFadeLevel() == 1.0f) {
                     mPowerState.dismissColorFade();
                 } else if (mPowerState.prepareColorFade(mContext,
-                        mColorFadeFadesConfig ?
-                                ColorFade.MODE_FADE :
-                                        ColorFade.MODE_WARM_UP)) {
+                        getScreenAnimationModeForDisplayState(Display.STATE_ON))) {
                     mColorFadeOnAnimator.start();
                 } else {
                     mColorFadeOnAnimator.end();
@@ -1515,8 +1591,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 mPowerState.dismissColorFadeResources();
             } else if (performScreenOffTransition
                     && mPowerState.prepareColorFade(mContext,
-                            mColorFadeFadesConfig ?
-                                    ColorFade.MODE_FADE : ColorFade.MODE_COOL_DOWN)
+                            getScreenAnimationModeForDisplayState(Display.STATE_OFF))
                     && mPowerState.getScreenState() != Display.STATE_OFF) {
                 // Perform the screen off animation.
                 mColorFadeOffAnimator.start();
@@ -1541,6 +1616,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 // Register the listener.
                 // Proximity sensor state already cleared initially.
                 mProximitySensorEnabled = true;
+                mIgnoreProximityUntilChanged = false;
                 mSensorManager.registerListener(mProximitySensorListener, mProximitySensor,
                         SensorManager.SENSOR_DELAY_NORMAL, mHandler);
             }
@@ -1550,6 +1626,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 // Clear the proximity sensor state for next time.
                 mProximitySensorEnabled = false;
                 mProximity = PROXIMITY_UNKNOWN;
+                mIgnoreProximityUntilChanged = false;
                 mPendingProximity = PROXIMITY_UNKNOWN;
                 mHandler.removeMessages(MSG_PROXIMITY_SENSOR_DEBOUNCED);
                 mSensorManager.unregisterListener(mProximitySensorListener);
@@ -1592,6 +1669,11 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 && mPendingProximityDebounceTime >= 0) {
             final long now = SystemClock.uptimeMillis();
             if (mPendingProximityDebounceTime <= now) {
+                if (mProximity != mPendingProximity) {
+                    // if the status of the sensor changed, stop ignoring.
+                    mIgnoreProximityUntilChanged = false;
+                    Slog.i(TAG, "No longer ignoring proximity [" + mPendingProximity + "]");
+                }
                 // Sensor reading accepted.  Apply the change then release the wake lock.
                 mProximity = mPendingProximity;
                 updatePowerState();
@@ -1732,6 +1814,27 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
             return mBrightnessMapper.convertToNits(backlight);
         } else {
             return -1.0f;
+        }
+    }
+
+    private void updatePendingProximityRequestsLocked() {
+        mWaitingForNegativeProximity |= mPendingWaitForNegativeProximityLocked;
+        mPendingWaitForNegativeProximityLocked = false;
+
+        if (mIgnoreProximityUntilChanged) {
+            // Also, lets stop waiting for negative proximity if we're ignoring it.
+            mWaitingForNegativeProximity = false;
+        }
+    }
+
+    private void ignoreProximitySensorUntilChangedInternal() {
+        if (!mIgnoreProximityUntilChanged
+                && mPowerRequest.useProximitySensor
+                && mProximity == PROXIMITY_POSITIVE) {
+            // Only ignore if it is still reporting positive (near)
+            mIgnoreProximityUntilChanged = true;
+            Slog.i(TAG, "Ignoring proximity");
+            updatePowerState();
         }
     }
 
@@ -1972,6 +2075,10 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
                 case MSG_SET_TEMPORARY_AUTO_BRIGHTNESS_ADJUSTMENT:
                     mTemporaryAutoBrightnessAdjustment = Float.intBitsToFloat(msg.arg1);
                     updatePowerState();
+                    break;
+
+                case MSG_IGNORE_PROXIMITY:
+                    ignoreProximitySensorUntilChangedInternal();
                     break;
             }
         }

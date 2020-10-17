@@ -195,8 +195,7 @@ public class NetworkTrafficSB extends TextView implements StatusIconDisplayable 
             }
             updateVisibility();
             updateTextSize();
-            if (mShowArrow)
-                updateTrafficDrawable();
+            updateTrafficDrawable();
 
             // Post delayed message to refresh in ~1000ms
             totalRxBytes = newTotalRxBytes;
@@ -583,7 +582,6 @@ public class NetworkTrafficSB extends TextView implements StatusIconDisplayable 
         if (mIsEnabled && mTrafficVisible && mSystemIconVisible && !mTrafficInHeaderView) {
             setVisibility(View.VISIBLE);
         } else {
-            setText("");
             setVisibility(View.GONE);
         }
     }

@@ -85,6 +85,11 @@ public class BluetoothTile extends QSTileImpl<BooleanState> {
     }
 
     @Override
+    public boolean isDualTarget() {
+        return true;
+    }
+
+    @Override
     public DetailAdapter getDetailAdapter() {
         return mDetailAdapter;
     }
@@ -281,6 +286,7 @@ public class BluetoothTile extends QSTileImpl<BooleanState> {
             refreshState();
             if (isShowingDetail()) {
                 mDetailAdapter.updateItems();
+                mDetailAdapter.setItemsVisible(true);
                 fireToggleStateChanged(mDetailAdapter.getToggleState());
             }
         }

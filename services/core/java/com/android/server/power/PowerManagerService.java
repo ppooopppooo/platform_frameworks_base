@@ -610,6 +610,9 @@ public final class PowerManagerService extends SystemService
     // but the DreamService has not yet been told to start (it's an async process).
     private boolean mDozeStartInProgress;
 
+    // doze on charge
+    private boolean mDozeOnChargeEnabled;
+
     private final class ForegroundProfileObserver extends SynchronousUserSwitchObserver {
         @Override
         public void onUserSwitching(@UserIdInt int newUserId) throws RemoteException {
@@ -1069,6 +1072,12 @@ public final class PowerManagerService extends SystemService
     }
 
     public void systemReady(IAppOpsService appOps) {
+        // set initial value
+        Settings.System.putIntForUser(mContext.getContentResolver(),
+                Settings.System.DOZE_ON_CHARGE_NOW, 0, UserHandle.USER_CURRENT);
+        Settings.System.putIntForUser(mContext.getContentResolver(),
+                Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, 0, UserHandle.USER_CURRENT);
+
         synchronized (mLock) {
             mSystemReady = true;
             mAppOps = appOps;
@@ -1186,8 +1195,21 @@ public final class PowerManagerService extends SystemService
         resolver.registerContentObserver(Settings.Secure.getUriFor(
                 Settings.Secure.HARDWARE_KEYS_DISABLE),
                 false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.DOZE_ON_CHARGE_NOW),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.DOZE_ON_CHARGE),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.AOD_NOTIFICATION_PULSE_TRIGGER),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.AOD_NOTIFICATION_PULSE),
+                false, mSettingsObserver, UserHandle.USER_ALL);
 
         IVrManager vrManager = IVrManager.Stub.asInterface(getBinderService(Context.VR_SERVICE));
+
         if (vrManager != null) {
             try {
                 vrManager.registerListener(mVrStateCallbacks);
@@ -1290,6 +1312,26 @@ public final class PowerManagerService extends SystemService
                 Settings.Global.STAY_ON_WHILE_PLUGGED_IN, BatteryManager.BATTERY_PLUGGED_AC);
         mTheaterModeEnabled = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.THEATER_MODE_ON, 0) == 1;
+        mDozeOnChargeEnabled = Settings.System.getIntForUser(resolver,
+                Settings.System.DOZE_ON_CHARGE, 0, UserHandle.USER_CURRENT) != 0;
+        Settings.System.putIntForUser(resolver, Settings.System.DOZE_ON_CHARGE_NOW,
+                mDozeOnChargeEnabled && mIsPowered ? 1 : 0, UserHandle.USER_CURRENT);
+
+        boolean mAmbientLights = Settings.System.getIntForUser(resolver,
+                Settings.System.AOD_NOTIFICATION_PULSE, 0, UserHandle.USER_CURRENT) != 0;
+        if (mAmbientLights) {
+            boolean dozeOnNotification = Settings.System.getIntForUser(resolver,
+                    Settings.System.AOD_NOTIFICATION_PULSE_TRIGGER, 0, UserHandle.USER_CURRENT) != 0;
+            Settings.System.putIntForUser(resolver,
+                     Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, dozeOnNotification ? 1 : 0,
+                     UserHandle.USER_CURRENT);
+        } else {
+             Settings.System.putIntForUser(resolver,
+                     Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, 0,
+                     UserHandle.USER_CURRENT);
+        }
+        // depends on AOD_NOTIFICATION_PULSE_ACTIVATED - so MUST be afterwards
+        // no need to call us again
         mAlwaysOnEnabled = mAmbientDisplayConfiguration.alwaysOnEnabled(UserHandle.USER_CURRENT);
 
         if (mSupportsDoubleTapWakeConfig) {
@@ -1809,11 +1851,17 @@ public final class PowerManagerService extends SystemService
         }
 
         if (eventTime < mLastWakeTime
-                || getWakefulnessLocked() == WAKEFULNESS_ASLEEP
-                || getWakefulnessLocked() == WAKEFULNESS_DOZING
                 || !mSystemReady
                 || !mBootCompleted) {
             return false;
+        }
+
+        // dont check current state
+        if ((flags & PowerManager.GO_TO_SLEEP_FLAG_FORCE) == 0) {
+            if (getWakefulnessLocked() == WAKEFULNESS_ASLEEP
+                    || getWakefulnessLocked() == WAKEFULNESS_DOZING) {
+                return false;
+            }
         }
 
         Trace.traceBegin(Trace.TRACE_TAG_POWER, "goToSleep");
@@ -2084,6 +2132,11 @@ public final class PowerManagerService extends SystemService
                 final boolean dockedOnWirelessCharger = mWirelessChargerDetector.update(
                         mIsPowered, mPlugType);
 
+                if (mDozeOnChargeEnabled) {
+                    Settings.System.putIntForUser(mContext.getContentResolver(),
+                            Settings.System.DOZE_ON_CHARGE_NOW, mIsPowered ? 1 : 0,
+                            UserHandle.USER_CURRENT);
+                }
                 // Treat plugging and unplugging the devices as a user activity.
                 // Users find it disconcerting when they plug or unplug the device
                 // and it shuts off right away.

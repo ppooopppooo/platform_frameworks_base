@@ -5426,6 +5426,23 @@ public class CarrierConfigManager {
     public static final String KEY_UNTHROTTLE_DATA_RETRY_WHEN_TAC_CHANGES_BOOL =
             "unthrottle_data_retry_when_tac_changes_bool";
 
+    /**
+     * String array of APN configurations of same MVNO type GID.
+     * The entries should be of form "GID data:all supported apn types:devicecapability:apnname".
+     * example: 52FF:default,mms:SA:nrphone
+     *
+     * @hide
+     */
+    public static final String KEY_MULTI_APN_ARRAY_FOR_SAME_GID = "multi_apn_array_for_same_gid";
+
+    /**
+     * Flag indicating if APN filtering required.
+     *
+     * @hide
+     */
+    public static final String KEY_REQUIRE_APN_FILTERING_WITH_RADIO_CAPABILITY =
+            "require_apn_filtering_with_radio_capability_bool";
+
     /** The default value for every variable. */
     private final static PersistableBundle sDefaults;
 
@@ -6018,6 +6035,7 @@ public class CarrierConfigManager {
         sDefaults.putBoolean(KEY_USE_ACS_FOR_RCS_BOOL, false);
         sDefaults.putBoolean(KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL, true);
         sDefaults.putInt(KEY_DEFAULT_RTT_MODE_INT, 0);
+<<<<<<< HEAD
         sDefaults.putBoolean(KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL, true);
         sDefaults.putBoolean(KEY_HIDE_ENABLE_2G, false);
         sDefaults.putStringArray(KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY,
@@ -6030,6 +6048,25 @@ public class CarrierConfigManager {
         sDefaults.putBoolean(KEY_UNTHROTTLE_DATA_RETRY_WHEN_TAC_CHANGES_BOOL, false);
         sDefaults.putBoolean(KEY_VONR_SETTING_VISIBILITY_BOOL, true);
         sDefaults.putBoolean(KEY_VONR_ENABLED_BOOL, false);
+        sDefaults.putStringArray(KEY_MULTI_APN_ARRAY_FOR_SAME_GID, new String[] {
+                "52FF:mms,supl,hipri,default,fota:SA:nrphone",
+                "52FF:mms,supl,hipri,default,fota:NSA:nxtgenphone",
+                "52FF:mms,supl,hipri,default,fota:LTE:nxtgenphone",
+                "52FF:mms,supl,hipri,default,fota:TD_SCDMA:nxtgenphone",
+                "52FF:mms,supl,hipri,default,fota:UMTS:nxtgenphone",
+                "52FF:mms,supl,hipri,default,fota:GSM:nxtgenphone",
+                "52FF:mms,supl,hipri,default,fota:HDR:nxtgenphone",
+                "52FF:mms,supl,hipri,default,fota:1xRTT:nxtgenphone",
+                "53FF:mms,supl,hipri,default,fota:SA:enhancedphone",
+                "53FF:mms,supl,hipri,default,fota:NSA:enhancedphone",
+                "53FF:mms,supl,hipri,default,fota:LTE:nxtgenphone",
+                "53FF:mms,supl,hipri,default,fota:TD_SCDMA:nxtgenphone",
+                "53FF:mms,supl,hipri,default,fota:UMTS:nxtgenphone",
+                "53FF:mms,supl,hipri,default,fota:GSM:nxtgenphone",
+                "53FF:mms,supl,hipri,default,fota:HDR:nxtgenphone",
+                "53FF:mms,supl,hipri,default,fota:1xRTT:nxtgenphone",
+        });
+        sDefaults.putBoolean(KEY_REQUIRE_APN_FILTERING_WITH_RADIO_CAPABILITY, false);
     }
 
     /**

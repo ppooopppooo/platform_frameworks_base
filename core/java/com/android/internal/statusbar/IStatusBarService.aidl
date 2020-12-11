@@ -39,6 +39,7 @@ interface IStatusBarService
     @UnsupportedAppUsage
     void collapsePanels();
     void togglePanel();
+    void toggleSettingsPanel();
     @UnsupportedAppUsage
     void disable(int what, IBinder token, String pkg);
     void disableForUser(int what, IBinder token, String pkg, int userId);
@@ -169,4 +170,6 @@ interface IStatusBarService
      * Used to block or unblock usage of gestural navigation
      */
     void setBlockedGesturalNavigation(boolean blocked);
+
+    void killForegroundApp();
 }

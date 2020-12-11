@@ -1392,12 +1392,13 @@ class StorageManagerService extends IStorageManager.Stub
                     final int oldState = vol.state;
                     final int newState = state;
                     vol.state = newState;
+                    final VolumeInfo vInfo = vol.clone();
                     final SomeArgs args = SomeArgs.obtain();
-                    args.arg1 = vol;
+                    args.arg1 = vInfo;
                     args.arg2 = oldState;
                     args.arg3 = newState;
                     mHandler.obtainMessage(H_VOLUME_STATE_CHANGED, args).sendToTarget();
-                    onVolumeStateChangedLocked(vol, oldState, newState);
+                    onVolumeStateChangedLocked(vInfo, oldState, newState);
                 }
             }
         }
@@ -4770,15 +4771,20 @@ class StorageManagerService extends IStorageManager.Stub
             }
         }
 
-        public void onAppOpsChanged(int code, int uid, @Nullable String packageName, int mode) {
+        public void onAppOpsChanged(int code, int uid, @Nullable String packageName, int mode,
+                int previousMode) {
             final long token = Binder.clearCallingIdentity();
             try {
                 if (mIsFuseEnabled) {
                     // When using FUSE, we may need to kill the app if the op changes
                     switch(code) {
                         case OP_REQUEST_INSTALL_PACKAGES:
-                            // Always kill regardless of op change, to remount apps /storage
-                            killAppForOpChange(code, uid);
+                            if (previousMode == MODE_ALLOWED || mode == MODE_ALLOWED) {
+                                // If we transition to/from MODE_ALLOWED, kill the app to make
+                                // sure it has the correct view of /storage. Changing between
+                                // MODE_DEFAULT / MODE_ERRORED is a no-op
+                                killAppForOpChange(code, uid);
+                            }
                             return;
                         case OP_MANAGE_EXTERNAL_STORAGE:
                             if (mode != MODE_ALLOWED) {

@@ -588,6 +588,18 @@ public class StatusBarManagerService extends IStatusBarService.Stub implements D
     }
 
     @Override
+    public void toggleSettingsPanel() {
+        enforceExpandStatusBar();
+
+        if (mBar != null) {
+            try {
+                mBar.toggleSettingsPanel();
+            } catch (RemoteException ex) {
+            }
+        }
+    }
+
+    @Override
     public void expandSettingsPanel(String subPanel) {
         enforceExpandStatusBar();
 
@@ -777,6 +789,16 @@ public class StatusBarManagerService extends IStatusBarService.Stub implements D
         if (mBar != null) {
             try {
                 mBar.hideAuthenticationDialog();
+            } catch (RemoteException ex) {
+            }
+        }
+    }
+
+    @Override
+    public void killForegroundApp() {
+        if (mBar != null) {
+            try {
+                mBar.killForegroundApp();
             } catch (RemoteException ex) {
             }
         }

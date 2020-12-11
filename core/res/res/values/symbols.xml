@@ -873,6 +873,7 @@
   <java-symbol type="string" name="wifi_calling_off_summary" />
   <java-symbol type="string" name="wfc_mode_wifi_preferred_summary" />
   <java-symbol type="string" name="wfc_mode_cellular_preferred_summary" />
+  <java-symbol type="string" name="wfc_mode_ims_preferred_summary" />
   <java-symbol type="string" name="wfc_mode_wifi_only_summary" />
   <java-symbol type="string" name="policydesc_disableCamera" />
   <java-symbol type="string" name="policydesc_encryptedStorage" />
@@ -1669,7 +1670,7 @@
   <java-symbol type="bool" name="config_enableCarDockHomeLaunch" />
   <java-symbol type="bool" name="config_enableLockBeforeUnlockScreen" />
   <java-symbol type="bool" name="config_enableLockScreenRotation" />
-  <java-symbol type="bool" name="config_forceShowSystemBars" />
+  <java-symbol type="bool" name="config_remoteInsetsControllerControlsSystemBars" />
   <java-symbol type="bool" name="config_lidControlsScreenLock" />
   <java-symbol type="bool" name="config_lidControlsSleep" />
   <java-symbol type="bool" name="config_lockDayNightMode" />

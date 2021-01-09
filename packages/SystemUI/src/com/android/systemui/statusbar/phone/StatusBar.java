@@ -484,7 +484,9 @@ public class StatusBar extends SystemUI implements DemoMode,
                 Log.d(TAG, String.format("User setup changed: userSetup=%s mUserSetup=%s",
                         userSetup, mUserSetup));
             }
-
+            if (mNotificationPanelViewController != null) {
+                mNotificationPanelViewController.setUserSetupComplete(userSetup);
+            }
             if (userSetup != mUserSetup) {
                 mUserSetup = userSetup;
                 if (!mUserSetup && mStatusBarView != null)
@@ -699,6 +701,9 @@ public class StatusBar extends SystemUI implements DemoMode,
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.GAMING_MODE_HEADSUP_TOGGLE),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.LOCKSCREEN_MEDIA_BLUR),
+                    false, this, UserHandle.USER_ALL);
         }
 
         @Override
@@ -710,6 +715,7 @@ public class StatusBar extends SystemUI implements DemoMode,
             if (mNotificationShadeWindowViewController != null) {
                 mNotificationShadeWindowViewController.updateSettings();
             }
+            setLockScreenMediaBlurLevel();
             setHeadsUpStoplist();
             setHeadsUpBlacklist();
             setUseLessBoringHeadsUp();
@@ -2207,6 +2213,12 @@ public class StatusBar extends SystemUI implements DemoMode,
         }
     }
 
+    private void setLockScreenMediaBlurLevel() {
+        if (mMediaManager != null) {
+            mMediaManager.setLockScreenMediaBlurLevel();
+        }
+    }
+
     void makeExpandedVisible(boolean force) {
         if (SPEW) Log.d(TAG, "Make expanded visible: expanded visible=" + mExpandedVisible);
         if (!force && (mExpandedVisible || !mCommandQueue.panelsEnabled())) {
@@ -3589,6 +3601,7 @@ public class StatusBar extends SystemUI implements DemoMode,
     public void keyguardGoingAway() {
         // Treat Keyguard exit animation as an app transition to achieve nice transition for status
         // bar.
+        mKeyguardIndicationController.setVisible(false);
         mKeyguardStateController.notifyKeyguardGoingAway(true);
         mCommandQueue.appTransitionPending(mDisplayId, true /* forced */);
     }
@@ -3768,7 +3781,6 @@ public class StatusBar extends SystemUI implements DemoMode,
                 mAmbientIndicationContainer.setVisibility(View.VISIBLE);
             }
         } else {
-            mKeyguardIndicationController.setVisible(false);
             if (mKeyguardUserSwitcher != null) {
                 mKeyguardUserSwitcher.setKeyguard(false,
                         mStatusBarStateController.goingToFullShade() ||

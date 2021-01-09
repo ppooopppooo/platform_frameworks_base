@@ -67,6 +67,7 @@ import java.util.TimerTask;
 public class FODCircleView extends ImageView implements TunerService.Tunable {
     private static final String DOZE_INTENT = "com.android.systemui.doze.pulse";
     private static final String FOD_GESTURE = "system:" + Settings.System.FOD_GESTURE;
+    private static final int FADE_ANIM_DURATION = 250;
 
     private final int mPositionX;
     private final int mPositionY;
@@ -85,10 +86,13 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
     private int mDreamingOffsetX;
     private int mDreamingOffsetY;
 
+    private boolean mFading;
     private boolean mIsBouncer;
+    private boolean mIsBiometricRunning;
+    private boolean mIsCircleShowing;
     private boolean mIsDreaming;
     private boolean mIsKeyguard;
-    private boolean mIsCircleShowing;
+    private boolean mTouchedOutside;
 
     private boolean mDozeEnabled;
     private boolean mFodGestureEnable;
@@ -153,9 +157,33 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
                         PowerManager.WAKE_REASON_GESTURE, FODCircleView.class.getSimpleName()));
                 }
                 mPressPending = true;
-            } else {
-                mHandler.post(() -> showCircle());
             }
+
+            if (!mUpdateMonitor.isScreenOn()) {
+                // Keyguard is shown just after screen turning off
+                return;
+            }
+
+            if (mIsBouncer && !isPinOrPattern(mUpdateMonitor.getCurrentUser())) {
+                // Ignore show calls when Keyguard password screen is being shown
+                return;
+            }
+
+            if (mIsKeyguard && mUpdateMonitor.getUserCanSkipBouncer(mUpdateMonitor.getCurrentUser())) {
+                // Ignore show calls if user can skip bouncer
+                return;
+            }
+
+            if (mIsKeyguard && !mIsBiometricRunning) {
+                return;
+            }
+
+            if (mUpdateMonitor.userNeedsStrongAuth()) {
+                // Keyguard requires strong authentication (not biometrics)
+                return;
+            }
+
+            mHandler.post(() -> showCircle());
         }
 
         @Override
@@ -171,9 +199,34 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
 
     private KeyguardUpdateMonitorCallback mMonitorCallback = new KeyguardUpdateMonitorCallback() {
         @Override
+        public void onBiometricAuthenticated(int userId, BiometricSourceType biometricSourceType,
+                boolean isStrongBiometric) {
+            // We assume that if biometricSourceType matches Fingerprint it will be
+            // handled here, so we hide only when other biometric types authenticate
+            if (biometricSourceType != BiometricSourceType.FINGERPRINT) {
+                hide();
+            }
+        }
+
+        @Override
+        public void onBiometricRunningStateChanged(boolean running,
+                BiometricSourceType biometricSourceType) {
+            if (biometricSourceType == BiometricSourceType.FINGERPRINT) {
+                mIsBiometricRunning = running;
+            }
+        }
+
+        @Override
         public void onDreamingStateChanged(boolean dreaming) {
             mIsDreaming = dreaming;
             updateAlpha();
+
+            if (mIsKeyguard && mUpdateMonitor.isFingerprintDetectionRunning()) {
+                show();
+                updateAlpha();
+            } else {
+                hideCircle();
+            }
 
             if (dreaming) {
                 mBurnInProtectionTimer = new Timer();
@@ -186,6 +239,13 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
         @Override
         public void onKeyguardVisibilityChanged(boolean showing) {
             mIsKeyguard = showing;
+
+            if (!showing) {
+                hide();
+            } else {
+                updateAlpha();
+            }
+
             updateStyle();
             if (mIsFodAnimationAvailable && mFODAnimation != null) {
                 mFODAnimation.setAnimationKeyguard(mIsKeyguard);
@@ -217,6 +277,13 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
                 hide();
             } else {
                 hideCircle();
+            }
+        }
+
+        @Override
+        public void onStartedWakingUp() {
+            if (mUpdateMonitor.isFingerprintDetectionRunning()) {
+                show();
             }
         }
 
@@ -282,14 +349,16 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
         mParams.format = PixelFormat.TRANSLUCENT;
 
         mParams.packageName = "android";
-        mParams.type = WindowManager.LayoutParams.TYPE_DISPLAY_OVERLAY;
+        mParams.type = WindowManager.LayoutParams.TYPE_KEYGUARD_DIALOG;
         mParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN |
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED |
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
         mParams.gravity = Gravity.TOP | Gravity.LEFT;
 
         mPressedParams.copyFrom(mParams);
-        mPressedParams.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
+        mPressedParams.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND |
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
 
         mParams.setTitle("Fingerprint on display");
         mPressedParams.setTitle("Fingerprint on display.touched");
@@ -303,8 +372,6 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
                 super.onDraw(canvas);
             }
         };
-        mPressedView.setImageResource(R.drawable.fod_icon_pressed);
-
         mWindowManager.addView(this, mParams);
 
         mCustomSettingsObserver.observe();
@@ -374,6 +441,12 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
         float y = event.getAxisValue(MotionEvent.AXIS_Y);
 
         boolean newIsInside = (x > 0 && x < mSize) && (y > 0 && y < mSize);
+        mTouchedOutside = false;
+
+        if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
+            mTouchedOutside = true;
+            return true;
+        }
 
         if (event.getAction() == MotionEvent.ACTION_DOWN && newIsInside) {
             showCircle();
@@ -415,6 +488,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
     }
 
     public void dispatchPress() {
+        if (mFading) return;
         IFingerprintInscreen daemon = getFingerprintInScreenDaemon();
         try {
             daemon.onPress();
@@ -451,6 +525,7 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
     }
 
     public void showCircle() {
+        if (mFading || mTouchedOutside) return;
         mIsCircleShowing = true;
 
         setKeepScreenOn(true);
@@ -461,6 +536,8 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
         if (mIsFodAnimationAvailable) {
             mHandler.post(() -> mFODAnimation.showFODanimation());
         }
+
+        mPressedView.setImageResource(R.drawable.fod_icon_pressed);
 
         setImageDrawable(null);
         invalidate();
@@ -483,6 +560,11 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
     }
 
     public void show() {
+        if (mUpdateMonitor.userNeedsStrongAuth()) {
+            // Keyguard requires strong authentication (not biometrics)
+            return;
+        }
+        
         if (!mUpdateMonitor.isScreenOn() && !mFodGestureEnable) {
             // Keyguard is shown just after screen turning off
             return;
@@ -493,14 +575,35 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
             return;
         }
 
+        if (mIsKeyguard && mUpdateMonitor.getUserCanSkipBouncer(mUpdateMonitor.getCurrentUser())) {
+            // Ignore show calls if user can skip bouncer
+            return;
+        }
+
+        if (mIsKeyguard && !mIsBiometricRunning) {
+            return;
+        }
+
         updatePosition();
 
-        dispatchShow();
         setVisibility(View.VISIBLE);
+        animate().withStartAction(() -> mFading = true)
+                .alpha(mIsDreaming ? 0.5f : 1.0f)
+                .setDuration(FADE_ANIM_DURATION)
+                .withEndAction(() -> mFading = false)
+                .start();
+        dispatchShow();
     }
 
     public void hide() {
-        setVisibility(View.GONE);
+        animate().withStartAction(() -> mFading = true)
+                .alpha(0)
+                .setDuration(FADE_ANIM_DURATION)
+                .withEndAction(() -> {
+                    setVisibility(View.GONE);
+                    mFading = false;
+                })
+                .start();
         hideCircle();
         dispatchHide();
     }

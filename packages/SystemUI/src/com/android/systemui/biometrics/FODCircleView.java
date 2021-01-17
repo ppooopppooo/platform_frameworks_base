@@ -110,6 +110,8 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
     private int mDreamingOffsetX;
     private int mDreamingOffsetY;
 
+    private int mColor;
+    
     private boolean mFading;
     private boolean mIsBouncer;
     private boolean mIsBiometricRunning;
@@ -352,6 +354,8 @@ public class FODCircleView extends ImageView implements TunerService.Tunable {
 
         Resources res = context.getResources();
 
+        mColor = res.getColor(R.color.config_fodColor);	
+        mPaintFingerprint.setColor(mColor);
         mPaintFingerprint.setAntiAlias(true);
 
         mTargetUsesInKernelDimming = res.getBoolean(com.android.internal.R.bool.config_targetUsesInKernelDimming);

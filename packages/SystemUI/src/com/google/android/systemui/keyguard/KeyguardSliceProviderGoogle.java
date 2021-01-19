@@ -154,7 +154,7 @@ public class KeyguardSliceProviderGoogle extends KeyguardSliceProvider implement
                     }
                     listBuilder.addRow(rowBuilder);
                 }
-                addWeather(listBuilder);
+                addweather(listBuilder);
                 addZenModeLocked(listBuilder);
                 addPrimaryActionLocked(listBuilder);
             }else{
@@ -165,7 +165,7 @@ public class KeyguardSliceProviderGoogle extends KeyguardSliceProvider implement
                     rowBuilder2.setTitle(getFormattedDateLocked());
                     listBuilder.addRow(rowBuilder2);
                 }
-                addWeather(listBuilder);
+                addweather(listBuilder);
                 addNextAlarmLocked(listBuilder);
                 addZenModeLocked(listBuilder);
                 addPrimaryActionLocked(listBuilder);
@@ -176,7 +176,7 @@ public class KeyguardSliceProviderGoogle extends KeyguardSliceProvider implement
         return slice;
     }
 
-    private void addWeather(ListBuilder listBuilder) {
+    private void addweather(ListBuilder listBuilder) {
         SmartSpaceCard weatherCard = mSmartSpaceData.getWeatherCard();
         if (weatherCard != null && !weatherCard.isExpired()) {
             RowBuilder rowBuilder = new RowBuilder(mWeatherUri);

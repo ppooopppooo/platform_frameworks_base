@@ -28,6 +28,7 @@ import static android.view.InsetsState.ITYPE_STATUS_BAR;
 import static android.view.InsetsState.containsType;
 import static android.view.WindowInsetsController.APPEARANCE_LOW_PROFILE_BARS;
 import static android.view.WindowInsetsController.APPEARANCE_OPAQUE_STATUS_BARS;
+import static android.view.WindowManagerPolicyConstants.NAV_BAR_MODE_GESTURAL_OVERLAY;
 
 import static androidx.lifecycle.Lifecycle.State.RESUMED;
 
@@ -70,6 +71,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.om.IOverlayManager;
 import android.content.pm.IPackageManager;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -279,6 +281,10 @@ public class StatusBar extends SystemUI implements DemoMode,
     public static final String SYSTEM_DIALOG_REASON_HOME_KEY = "homekey";
     public static final String SYSTEM_DIALOG_REASON_RECENT_APPS = "recentapps";
     static public final String SYSTEM_DIALOG_REASON_SCREENSHOT = "screenshot";
+
+    private static final String LONG_OVERLAY_PKG = "com.custom.overlay.systemui.gestural.long";
+    private static final String MEDIUM_OVERLAY_PKG = "com.custom.overlay.systemui.gestural.medium";
+    private static final String HIDDEN_OVERLAY_PKG = "com.custom.overlay.systemui.gestural.hidden";
 
     private static final String BANNER_ACTION_CANCEL =
             "com.android.systemui.statusbar.banner_action_cancel";
@@ -655,6 +661,7 @@ public class StatusBar extends SystemUI implements DemoMode,
     private final LifecycleRegistry mLifecycle = new LifecycleRegistry(this);
     protected final BatteryController mBatteryController;
     protected boolean mPanelExpanded;
+    private IOverlayManager mOverlayManager;
     private UiModeManager mUiModeManager;
     protected boolean mIsKeyguard;
     private LogMaker mStatusBarStateLog;
@@ -672,6 +679,8 @@ public class StatusBar extends SystemUI implements DemoMode,
     };
     private boolean mNoAnimationOnNextBarModeChange;
     private final SysuiStatusBarStateController mStatusBarStateController;
+
+    private boolean mDisplayCutoutHidden;
 
     private final KeyguardUpdateMonitorCallback mUpdateCallback =
             new KeyguardUpdateMonitorCallback() {
@@ -740,10 +749,16 @@ public class StatusBar extends SystemUI implements DemoMode,
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.STATUS_BAR_BRIGHTNESS_CONTROL),
                     false, this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.DISPLAY_CUTOUT_HIDDEN),
+                    false, this, UserHandle.USER_ALL);
         }
 
         @Override
-        public void onChange(boolean selfChange) {
+        public void onChange(boolean selfChange, Uri uri) {
+            if (uri.equals(Settings.System.getUriFor(Settings.System.DISPLAY_CUTOUT_HIDDEN))) {
+                updateCutoutOverlay();
+            }
             update();
         }
 
@@ -940,6 +955,8 @@ public class StatusBar extends SystemUI implements DemoMode,
     public void start() {
         mScreenLifecycle.addObserver(mScreenObserver);
         mWakefulnessLifecycle.addObserver(mWakefulnessObserver);
+        mOverlayManager = IOverlayManager.Stub.asInterface(
+                ServiceManager.getService(Context.OVERLAY_SERVICE));
         mUiModeManager = mContext.getSystemService(UiModeManager.class);
         mBypassHeadsUpNotifier.setUp();
         mBubbleController.setExpandListener(mBubbleExpandListener);
@@ -1688,7 +1705,7 @@ public class StatusBar extends SystemUI implements DemoMode,
                 && !mDozing
                 && !ONLY_CORE_APPS;
         mNotificationPanelViewController.setQsExpansionEnabled(expandEnabled);
-        Log.d(TAG, "updateQsExpansionEnabled - QS Expand enabled: " + expandEnabled);
+        if (DEBUG) Log.d(TAG, "updateQsExpansionEnabled - QS Expand enabled: " + expandEnabled);
     }
 
     public void addQsTile(ComponentName tile) {
@@ -1974,6 +1991,47 @@ public class StatusBar extends SystemUI implements DemoMode,
     @Override
     public void onColorsChanged(ColorExtractor extractor, int which) {
         updateTheme();
+    }
+
+    private String getCurrentGesturalOverlayPackage() {
+        float gestureLenght = Settings.Secure.getFloat(mContext.getContentResolver(),
+                        Settings.Secure.GESTURE_NAVBAR_LENGTH, 1.0f);
+        String overlayPkg = NAV_BAR_MODE_GESTURAL_OVERLAY;
+        switch ((int)gestureLenght) {
+            case 0:
+                overlayPkg = HIDDEN_OVERLAY_PKG;
+                break;
+            case 2:
+                overlayPkg = MEDIUM_OVERLAY_PKG;
+                break;
+            case 3:
+                overlayPkg = LONG_OVERLAY_PKG;
+                break;
+        }
+        return overlayPkg;
+    }
+
+    private void updateCutoutOverlay() {
+        final int userId = mContext.getUserId();
+        boolean displayCutoutHidden = Settings.System.getIntForUser(mContext.getContentResolver(),
+                        Settings.System.DISPLAY_CUTOUT_HIDDEN, 0, UserHandle.USER_CURRENT) == 1;
+        if (mDisplayCutoutHidden != displayCutoutHidden) {
+            mDisplayCutoutHidden = displayCutoutHidden;
+
+            try {
+                int navigationMode = Settings.Secure.getIntForUser(mContext.getContentResolver(),
+                           Settings.Secure.NAVIGATION_MODE, 0, UserHandle.USER_CURRENT);
+                    if (navigationMode == 2 /* gestural */) {
+                         mOverlayManager.setEnabled(getCurrentGesturalOverlayPackage(), false, userId);
+                         mOverlayManager.setEnabled("com.syberia.overlay.hidecutout",
+                                     mDisplayCutoutHidden, userId);
+                         mOverlayManager.setEnabledExclusiveInCategory(getCurrentGesturalOverlayPackage(), userId);
+                    } else {
+                             mOverlayManager.setEnabled("com.syberia.overlay.hidecutout",
+                                        mDisplayCutoutHidden, userId);
+                    }
+            } catch (SecurityException | IllegalStateException | RemoteException e) { }
+        }
     }
 
     @Nullable

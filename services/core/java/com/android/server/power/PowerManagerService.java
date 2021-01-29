@@ -120,6 +120,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.NoSuchElementException;
+
+import vendor.syberia.smartcharge.V1_0.ISmartCharge;
 
 /**
  * The power manager service is responsible for coordinating power management
@@ -662,16 +665,10 @@ public final class PowerManagerService extends SystemService
     }
 
     // Smart charging
+    private ISmartCharge mSmartCharge;
     private boolean mSmartChargingEnabled;
     private boolean mSmartChargingResetStats;
-    private boolean mPowerInputSuspended = false;
-    private int mSmartChargingLevel;
-    private int mSmartChargingResumeLevel;
-    private int mSmartChargingLevelDefaultConfig;
-    private int mSmartChargingResumeLevelDefaultConfig;
-    private static String mPowerInputSuspendSysfsNode;
-    private static String mPowerInputSuspendValue;
-    private static String mPowerInputResumeValue;
+    private int mSuspendLevel;
 
     /**
      * All times are in milliseconds. These constants are kept synchronized with the system
@@ -1092,6 +1089,7 @@ public final class PowerManagerService extends SystemService
         Settings.System.putIntForUser(mContext.getContentResolver(),
                 Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, 0, UserHandle.USER_CURRENT);
 
+
         synchronized (mLock) {
             mSystemReady = true;
             mAppOps = appOps;
@@ -1225,12 +1223,6 @@ public final class PowerManagerService extends SystemService
                 Settings.System.SMART_CHARGING),
                 false, mSettingsObserver, UserHandle.USER_ALL);
         resolver.registerContentObserver(Settings.System.getUriFor(
-                Settings.System.SMART_CHARGING_LEVEL),
-                false, mSettingsObserver, UserHandle.USER_ALL);
-        resolver.registerContentObserver(Settings.System.getUriFor(
-                Settings.System.SMART_CHARGING_RESUME_LEVEL),
-                false, mSettingsObserver, UserHandle.USER_ALL);
-        resolver.registerContentObserver(Settings.System.getUriFor(
                 Settings.System.SMART_CHARGING_RESET_STATS),
                 false, mSettingsObserver, UserHandle.USER_ALL);
         IVrManager vrManager = IVrManager.Stub.asInterface(getBinderService(Context.VR_SERVICE));
@@ -1261,6 +1253,8 @@ public final class PowerManagerService extends SystemService
         filter = new IntentFilter();
         filter.addAction(Intent.ACTION_DOCK_EVENT);
         mContext.registerReceiver(new DockReceiver(), filter, null, mHandler);
+
+        initSmartCharge();
     }
 
     @VisibleForTesting
@@ -1308,16 +1302,6 @@ public final class PowerManagerService extends SystemService
         mSupportsDoubleTapWakeConfig = resources.getBoolean(
                 com.android.internal.R.bool.config_supportDoubleTapWake);
         // Smart charging
-        mSmartChargingLevelDefaultConfig = resources.getInteger(
-                com.android.internal.R.integer.config_smartChargingBatteryLevel);
-        mSmartChargingResumeLevelDefaultConfig = resources.getInteger(
-                com.android.internal.R.integer.config_smartChargingBatteryResumeLevel);
-        mPowerInputSuspendSysfsNode = resources.getString(
-                com.android.internal.R.string.config_SmartChargingSysfsNode);
-        mPowerInputSuspendValue = resources.getString(
-                com.android.internal.R.string.config_SmartChargingSuspendValue);
-        mPowerInputResumeValue = resources.getString(
-                com.android.internal.R.string.config_SmartChargingResumeValue);
         mSmartChargingResetStats = Settings.System.getInt(mContext.getContentResolver(),
                 Settings.System.SMART_CHARGING_RESET_STATS, 0) == 1;
     }
@@ -1373,12 +1357,6 @@ public final class PowerManagerService extends SystemService
         mAlwaysOnEnabled = mAmbientDisplayConfiguration.alwaysOnEnabled(UserHandle.USER_CURRENT);
         mSmartChargingEnabled = Settings.System.getInt(resolver,
                 Settings.System.SMART_CHARGING, 0) == 1;
-        mSmartChargingLevel = Settings.System.getInt(resolver,
-                Settings.System.SMART_CHARGING_LEVEL,
-                mSmartChargingLevelDefaultConfig);
-        mSmartChargingResumeLevel = Settings.System.getInt(resolver,
-                Settings.System.SMART_CHARGING_RESUME_LEVEL,
-                mSmartChargingResumeLevelDefaultConfig);
         mSmartChargingResetStats = Settings.System.getInt(resolver,
                 Settings.System.SMART_CHARGING_RESET_STATS, 0) == 1;
 
@@ -1425,7 +1403,7 @@ public final class PowerManagerService extends SystemService
     private void handleSettingsChangedLocked() {
         updateSettingsLocked();
         updatePowerStateLocked();
-        updateSmartChargingStatus();
+        updateSmartChargeStatus();
     }
 
     private void acquireWakeLockInternal(IBinder lock, int flags, String tag, String packageName,
@@ -2214,37 +2192,45 @@ public final class PowerManagerService extends SystemService
             }
 
             mBatterySaverStateMachine.setBatteryStatus(mIsPowered, mBatteryLevel, mBatteryLevelLow);
-            updateSmartChargingStatus();
+            updateSmartChargeStatus();
         }
     }
 
-    private void updateSmartChargingStatus() {
-        if (mPowerInputSuspended && (mBatteryLevel <= mSmartChargingResumeLevel) ||
-            (mPowerInputSuspended && !mSmartChargingEnabled)) {
+    private void initSmartCharge() {
+        mSmartCharge = getSmartCharge();
+        if (mSmartCharge != null) {
             try {
-                FileUtils.stringToFile(mPowerInputSuspendSysfsNode, mPowerInputResumeValue);
-                mPowerInputSuspended = false;
-            } catch (IOException e) {
-                Slog.e(TAG, "failed to write to " + mPowerInputSuspendSysfsNode);
+                int defaultSuspendLevel = mSmartCharge.getSuspendLevel();
+                int defaultResumeLevel = mSmartCharge.getResumeLevel();
+                int suspendLevel = Settings.System.getInt(mContext.getContentResolver(),
+                     Settings.System.SMART_CHARGING_LEVEL, defaultSuspendLevel);
+                int resumeLevel = Settings.System.getInt(mContext.getContentResolver(),
+                     Settings.System.SMART_CHARGING_RESUME_LEVEL, defaultResumeLevel);
+                mSmartCharge.updateBatteryLevels(suspendLevel, resumeLevel);
+            } catch (RemoteException ex) {
+                ex.printStackTrace();
             }
+        }
+    }
+
+    private void updateSmartChargeStatus() {
+        if (mSmartCharge == null) {
             return;
         }
 
-        if (mSmartChargingEnabled && !mPowerInputSuspended && (mBatteryLevel >= mSmartChargingLevel)) {
-            Slog.i(TAG, "Smart charging reset stats: " + mSmartChargingResetStats);
-            if (mSmartChargingResetStats) {
-                try {
-                     mBatteryStats.resetStatistics();
-                } catch (RemoteException e) {
-                         Slog.e(TAG, "failed to reset battery statistics");
-                }
-            }
+        try {
+            mSmartCharge.setSmartChargeEnabled(mSmartChargingEnabled);
+            mSmartCharge.updateCapacity(mBatteryLevel);
+            mSuspendLevel = mSmartCharge.getSuspendLevel();
+        } catch (RemoteException ex) {
+            ex.printStackTrace();
+        }
 
+        if (mSmartChargingEnabled && mSmartChargingResetStats && (mBatteryLevel >= mSuspendLevel)) {
             try {
-                FileUtils.stringToFile(mPowerInputSuspendSysfsNode, mPowerInputSuspendValue);
-                mPowerInputSuspended = true;
-            } catch (IOException e) {
-                    Slog.e(TAG, "failed to write to " + mPowerInputSuspendSysfsNode);
+                 mBatteryStats.resetStatistics();
+            } catch (RemoteException e) {
+                     Slog.e(TAG, "failed to reset battery statistics");
             }
         }
     }
@@ -5906,4 +5892,17 @@ public final class PowerManagerService extends SystemService
             return interceptPowerKeyDownInternal(event);
         }
     }
+
+    private synchronized ISmartCharge getSmartCharge() {
+        try {
+            return ISmartCharge.getService();
+        } catch (RemoteException ex) {
+            ex.printStackTrace();
+        } catch (NoSuchElementException ex) {
+            // service not available
+        }
+
+        return null;
+    }
+
 }

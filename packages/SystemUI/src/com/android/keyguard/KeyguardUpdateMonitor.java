@@ -326,17 +326,13 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
     private final IPocketCallback mPocketCallback = new IPocketCallback.Stub() {
         @Override
         public void onStateChanged(boolean isDeviceInPocket, int reason) {
-            boolean changed = false;
+            boolean wasInPocket = mIsDeviceInPocket;
             if (reason == PocketManager.REASON_SENSOR) {
-                if (isDeviceInPocket != mIsDeviceInPocket) {
-                    mIsDeviceInPocket = isDeviceInPocket;
-                    changed = true;
-                }
+                mIsDeviceInPocket = isDeviceInPocket;
             } else {
-                changed = isDeviceInPocket != mIsDeviceInPocket;
                 mIsDeviceInPocket = false;
             }
-            if (changed) {
+            if (wasInPocket != mIsDeviceInPocket) {
                 mHandler.sendEmptyMessage(MSG_POCKET_STATE_CHANGED);
             }
         }
@@ -1005,9 +1001,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         final DevicePolicyManager dpm =
                 (DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
         // TODO(b/140035044)
-        return whitelistIpcs(() -> dpm != null && (dpm.getKeyguardDisabledFeatures(null, userId)
+        return dpm != null && (dpm.getKeyguardDisabledFeatures(null, userId)
                 & DevicePolicyManager.KEYGUARD_DISABLE_FACE) != 0
-                || isSimPinSecure());
+                || isSimPinSecure();
     }
 
 

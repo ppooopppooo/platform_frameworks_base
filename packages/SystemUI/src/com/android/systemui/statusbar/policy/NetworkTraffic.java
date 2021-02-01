@@ -75,7 +75,7 @@ public class NetworkTraffic extends TextView {
     }
 
     private boolean mIsEnabled;
-    protected boolean mAttached;
+    private boolean mAttached;
     private long totalRxBytes;
     private long totalTxBytes;
     private long lastUpdateTime;
@@ -88,6 +88,7 @@ public class NetworkTraffic extends TextView {
     private int mNetTrafSize;
     private int mTintColor;
     private boolean mTrafficVisible = false;
+    private boolean mScreenOn = true;
     private boolean iBytes;
     private boolean oBytes;
 
@@ -355,6 +356,8 @@ public class NetworkTraffic extends TextView {
             mAttached = true;
             IntentFilter filter = new IntentFilter();
             filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
+            filter.addAction(Intent.ACTION_SCREEN_OFF);
+            filter.addAction(Intent.ACTION_SCREEN_ON);
             mContext.registerReceiver(mIntentReceiver, filter, null, getHandler());
         }
         updateSettings();
@@ -363,7 +366,6 @@ public class NetworkTraffic extends TextView {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        clearHandlerCallbacks();
         if (mAttached) {
             mContext.unregisterReceiver(mIntentReceiver);
             mAttached = false;
@@ -376,8 +378,14 @@ public class NetworkTraffic extends TextView {
             String action = intent.getAction();
             if (action == null) return;
 
-            if (action.equals(ConnectivityManager.CONNECTIVITY_ACTION)) {
+            if (action.equals(ConnectivityManager.CONNECTIVITY_ACTION) && mScreenOn) {
                 updateSettings();
+            } else if (action.equals(Intent.ACTION_SCREEN_ON)) {
+                mScreenOn = true;
+                updateSettings();
+            } else if (action.equals(Intent.ACTION_SCREEN_OFF)) {
+                mScreenOn = false;
+                clearHandlerCallbacks();
             }
         }
     };

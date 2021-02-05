@@ -614,6 +614,8 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
     }
 
     private void startListeningForLight() {
+        boolean mUseLightSensor = mContext.getResources().getBoolean(
+                                    com.android.internal.R.bool.config_pocketUseLightSensor);
 
         if (mVendorSensor != null) {
             return;
@@ -623,7 +625,7 @@ public class PocketService extends SystemService implements IBinder.DeathRecipie
             Log.d(TAG, "startListeningForLight()");
         }
 
-        if (!PocketConstants.ENABLE_LIGHT_JUDGE) {
+        if (!mUseLightSensor) {
             return;
         }
 

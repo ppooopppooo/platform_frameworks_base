@@ -646,6 +646,7 @@ public class NotificationMediaManager implements Dumpable {
             }
         }
 
+        // show artwork only if the media is playing
         if ((hasArtwork || DEBUG_MEDIA_FAKE_ARTWORK)
                 && (mStatusBarStateController.getState() != StatusBarState.SHADE || allowWhenShade)
                 &&  mBiometricUnlockController != null && mBiometricUnlockController.getMode()

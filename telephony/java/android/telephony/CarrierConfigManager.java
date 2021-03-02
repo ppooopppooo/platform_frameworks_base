@@ -5443,6 +5443,18 @@ public class CarrierConfigManager {
     public static final String KEY_REQUIRE_APN_FILTERING_WITH_RADIO_CAPABILITY =
             "require_apn_filtering_with_radio_capability_bool";
 
+    /**
+     * Determines whether carrier supports Sms Callback Mode.
+     * When {@code true}, modem can enter/exit SMS callback mode (SCBM) after sending e911 SMS.
+     * When user tries to make a following e911 call and modem is in SCBM, the same sub will be
+     * selected to place the e911 call over IMS.
+     * When {@code false}, follows the current slot selection logic to place the e911 call.
+     *
+     * @hide
+     */
+    public static final String KEY_USE_SMS_CALLBACK_MODE_BOOL =
+            "use_sms_callback_mode_bool";
+
     /** The default value for every variable. */
     private final static PersistableBundle sDefaults;
 
@@ -6035,7 +6047,6 @@ public class CarrierConfigManager {
         sDefaults.putBoolean(KEY_USE_ACS_FOR_RCS_BOOL, false);
         sDefaults.putBoolean(KEY_NETWORK_TEMP_NOT_METERED_SUPPORTED_BOOL, true);
         sDefaults.putInt(KEY_DEFAULT_RTT_MODE_INT, 0);
-<<<<<<< HEAD
         sDefaults.putBoolean(KEY_STORE_SIM_PIN_FOR_UNATTENDED_REBOOT_BOOL, true);
         sDefaults.putBoolean(KEY_HIDE_ENABLE_2G, false);
         sDefaults.putStringArray(KEY_ALLOWED_INITIAL_ATTACH_APN_TYPES_STRING_ARRAY,
@@ -6067,6 +6078,7 @@ public class CarrierConfigManager {
                 "53FF:mms,supl,hipri,default,fota:1xRTT:nxtgenphone",
         });
         sDefaults.putBoolean(KEY_REQUIRE_APN_FILTERING_WITH_RADIO_CAPABILITY, false);
+        sDefaults.putBoolean(KEY_USE_SMS_CALLBACK_MODE_BOOL, false);
     }
 
     /**

@@ -77,6 +77,7 @@
 #include <android-base/unique_fd.h>
 #include <bionic/malloc.h>
 #include <cutils/fs.h>
+#include <cutils/memory.h>
 #include <cutils/multiuser.h>
 #include <cutils/sockets.h>
 #include <private/android_filesystem_config.h>
@@ -126,8 +127,6 @@ static const char kZygoteClassName[] = "com/android/internal/os/Zygote";
 static jclass gZygoteClass;
 static jmethodID gCallPostForkSystemServerHooks;
 static jmethodID gCallPostForkChildHooks;
-
-static bool gIsSecurityEnforced = true;
 
 /**
  * True if the app process is running in its mount namespace.
@@ -629,14 +628,16 @@ static void PreApplicationInit() {
 
   // Set the jemalloc decay time to 1.
   mallopt(M_DECAY_TIME, 1);
+
+  // Avoid potentially expensive memory mitigations, mostly meant for system
+  // processes, in apps. These may cause app compat problems, use more memory,
+  // or reduce performance. While it would be nice to have them for apps,
+  // we will have to wait until they are proven out, have more efficient
+  // hardware, and/or apply them only to new applications.
+  process_disable_memory_mitigations();
 }
 
 static void SetUpSeccompFilter(uid_t uid, bool is_child_zygote) {
-  if (!gIsSecurityEnforced) {
-    ALOGI("seccomp disabled by setenforce 0");
-    return;
-  }
-
   // Apply system or app filter based on uid.
   if (uid >= AID_APP_START) {
     if (is_child_zygote) {
@@ -2198,11 +2199,6 @@ static void com_android_internal_os_Zygote_nativeAllowFileAcrossFork(
 
 static void com_android_internal_os_Zygote_nativeInstallSeccompUidGidFilter(
         JNIEnv* env, jclass, jint uidGidMin, jint uidGidMax) {
-  if (!gIsSecurityEnforced) {
-    ALOGI("seccomp disabled by setenforce 0");
-    return;
-  }
-
   bool installed = install_setuidgid_seccomp_filter(uidGidMin, uidGidMax);
   if (!installed) {
       RuntimeAbort(env, __LINE__, "Could not install setuid/setgid seccomp filter.");
@@ -2279,10 +2275,6 @@ static void com_android_internal_os_Zygote_nativeInitNativeState(JNIEnv* env, jc
   /*
    * Security Initialization
    */
-
-  // security_getenforce is not allowed on app process. Initialize and cache
-  // the value before zygote forks.
-  gIsSecurityEnforced = security_getenforce();
 
   selinux_android_seapp_context_init();
 

@@ -5854,11 +5854,37 @@ public final class Settings {
         public static final String SENSOR_BLOCK = "sensor_block";
 
         /**
-         * Sensor blocked packages
+         * Wheter to play notification sound and vibration if screen is ON
+         * 0 - never
+         * 1 - always
+         * @hide
+         */
+        public static final String NOTIFICATION_SOUND_VIB_SCREEN_ON = "notification_sound_vib_screen_on";
+
+        /**
+         * Whether to show the battery info on the lockscreen while charging
          * @hide
          */
         public static final String SENSOR_BLOCKED_APP = "sensor_blocked_app";
         public static final String SENSOR_BLOCKED_APP_DUMMY = "sensor_blocked_app_dummy";
+
+        /**
+         * Whether the phone ringtone should be played in an increasing manner
+         * @hide
+         */
+        public static final String INCREASING_RING = "increasing_ring";
+
+        /**
+         * Start volume fraction for increasing ring volume
+         * @hide
+         */
+        public static final String INCREASING_RING_START_VOLUME = "increasing_ring_start_vol";
+
+        /**
+         * Ramp up time (seconds) for increasing ring
+         * @hide
+         */
+        public static final String INCREASING_RING_RAMP_UP_TIME = "increasing_ring_ramp_up_time";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to
@@ -9694,6 +9720,13 @@ public final class Settings {
         public static final int VR_DISPLAY_MODE_OFF = 1;
 
         /**
+         * Whether to vibrate when quick settings tile is pressed.
+         *
+         * @hide
+         */
+        public static final String QUICK_SETTINGS_TILES_VIBRATE = "quick_settings_vibrate";
+
+        /**
          * The latest SDK version that CarrierAppUtils#disableCarrierAppsUntilPrivileged has been
          * executed for.
          *
@@ -10160,10 +10193,24 @@ public final class Settings {
                 "qs_show_auto_brightness";
 
         /**
+         * Whether to show qs brightness slider in quickbar
          * @hide
          */
         public static final String QS_SHOW_BRIGHTNESS_SLIDER =
                 "qs_show_brightness_slider";
+
+        /**
+         * Whether to show qs brightness slider when qs is expanded
+         * @hide
+         */
+        public static final String QS_SHOW_BRIGHTNESS_SLIDER_EXPANDED =
+                "qs_show_brightness_slider_show_expanded";
+
+        /**
+         * Whether to show QS brightness slider on bottom
+         * @hide
+         */
+        public static final String QS_BRIGHTNESS_POSITION_BOTTOM = "qs_brightness_position_bottom";
 
         /**
          * @hide

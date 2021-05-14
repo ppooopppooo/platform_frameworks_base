@@ -4909,6 +4909,12 @@ public final class Settings {
         public static final String VOLUME_BUTTON_MUSIC_CONTROL = "volume_button_music_control";
 
         /**
+         * Whether to use new QS panel bg tint or not
+         * @hide
+         */
+        public static final String QS_PANEL_BG_USE_NEW_TINT = "qs_panel_bg_use_new_tint";
+
+        /**
          * Enable/Disable screenshot sound
          * @hide
          */
@@ -4995,6 +5001,30 @@ public final class Settings {
          * @hide
          */
         public static final String GLOBAL_ACTIONS_SCREENRECORD = "global_actions_screenrecord";
+
+        /**
+         * Custom Ambient tilt gesture
+         * @hide
+         */
+        public static final String CUSTOM_AMBIENT_TILT_GESTURE = "custom_ambient_tilt_gesture";
+
+        /**
+         * Custom Ambient handwave gesture
+         * @hide
+         */
+        public static final String CUSTOM_AMBIENT_HANDWAVE_GESTURE = "custom_ambient_handwave_gesture";
+
+        /**
+         * Custom Ambient raise gesture
+         * @hide
+         */
+        public static final String CUSTOM_AMBIENT_RAISE_GESTURE = "custom_ambient_raise_gesture";
+
+        /**
+         * Custom Ambient pocketmode gesture
+         * @hide
+         */
+        public static final String CUSTOM_AMBIENT_POCKETMODE_GESTURE = "custom_ambient_pocketmode_gesture";
 
         /**
          * Whether to display settings in the power menu
@@ -5887,6 +5917,38 @@ public final class Settings {
         public static final String INCREASING_RING_RAMP_UP_TIME = "increasing_ring_ramp_up_time";
 
         /**
+         * User definable value of pulse notification screen brightness
+         *
+         * @hide
+         */
+       public static final String PULSE_BRIGHTNESS = "pulse_brightness";
+
+       /**
+        * User definable value of aod screen brightness
+        *
+        * @hide
+        */
+       public static final String DOZE_BRIGHTNESS = "doze_brightness";
+
+       /**
+        * @hide
+        */
+       public static final String DOZE_BRIGHTNESS_FORCE = "doze_brightness_force";
+
+
+        /**
+         * Whether to show battery percent on ambient bottom
+         * @hide
+         */
+        public static final String AMBIENT_BATTERY_PERCENT = "ambient_battery_percent";
+
+        /**
+         * Whether to use UI blur if supported by device
+         * @hide
+         */
+        public static final String UI_BACKGROUND_BLUR = "ui_background_blur";
+
+        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *
@@ -6081,6 +6143,10 @@ public final class Settings {
             PRIVATE_SETTINGS.add(STATUSBAR_CLOCK_DATE_POSITION);
             PRIVATE_SETTINGS.add(DISPLAY_CUTOUT_HIDDEN);
             PRIVATE_SETTINGS.add(FORCE_SHOW_NAVBAR);
+            PRIVATE_SETTINGS.add(QS_PANEL_BG_USE_NEW_TINT);
+            PRIVATE_SETTINGS.add(PULSE_BRIGHTNESS);
+            PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS);
+            PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS_FORCE);
         }
 
         /**
@@ -8941,6 +9007,26 @@ public final class Settings {
         @SystemApi
         @TestApi
         public static final String DOZE_ALWAYS_ON = "doze_always_on";
+
+        /**
+         * Indicates whether doze turns on automatically
+         * 0 = disabled (default)
+         * 1 = from sunset to sunrise
+         * 2 = custom time
+         * 3 = from sunset till a time
+         * 4 = from a time till sunrise
+         * @hide
+         */
+        public static final String DOZE_ALWAYS_ON_AUTO_MODE = "doze_always_on_auto_mode";
+
+        /**
+         * The custom time {@link DOZE_ALWAYS_ON} should be on at
+         * Only relevant when {@link DOZE_ALWAYS_ON_AUTO_MODE} is set to 2 and above
+         * 0 = Disabled (default)
+         * format: HH:mm,HH:mm (since,till)
+         * @hide
+         */
+        public static final String DOZE_ALWAYS_ON_AUTO_TIME = "doze_always_on_auto_time";
 
         /**
          * Whether the device should pulse on pick up gesture.

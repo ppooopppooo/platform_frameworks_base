@@ -436,16 +436,15 @@ class MediaDataManager(
                         artWorkIcon.type == Icon.TYPE_ADAPTIVE_BITMAP) {
                     artworkBitmap = artWorkIcon.bitmap
                 } else {
-                    val drawable: Drawable? = artWorkIcon.loadDrawable(context)
-                    if (drawable != null) {
-                        artworkBitmap = Bitmap.createBitmap(
-                                drawable.intrinsicWidth,
-                                drawable.intrinsicHeight,
-                                Bitmap.Config.ARGB_8888)
-                        val canvas = Canvas(artworkBitmap)
-                        drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
-                        drawable.draw(canvas)
-                    }
+                    val drawable: Drawable = artWorkIcon.loadDrawableAsUser(context,
+                            sbn.user.identifier)
+                    artworkBitmap = Bitmap.createBitmap(
+                            drawable.intrinsicWidth,
+                            drawable.intrinsicHeight,
+                            Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(artworkBitmap)
+                    drawable.setBounds(0, 0, drawable.intrinsicWidth, drawable.intrinsicHeight)
+                    drawable.draw(canvas)
                 }
             }
         }
@@ -456,9 +455,8 @@ class MediaDataManager(
         val app = builder.loadHeaderAppName()
 
         // App Icon
-        // TODO: Look into why context is not for the right user. If current user is a secondary
-        //  user, context.userId is still 0, not the id of the current user.
-        val smallIconDrawable: Drawable? = sbn.notification.smallIcon.loadDrawable(context)
+        val smallIconDrawable: Drawable = sbn.notification.smallIcon.loadDrawableAsUser(context,
+                sbn.user.identifier)
 
         // Song name
         var song: CharSequence? = metadata?.getString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE)

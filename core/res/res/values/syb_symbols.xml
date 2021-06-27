@@ -105,9 +105,6 @@
     <!-- FOD icon dimming -->
     <java-symbol type="bool" name="config_targetUsesInKernelDimming" />
     
-    <!-- Component name of popup camera service -->
-    <java-symbol type="string" name="config_popUpCameraServiceComponentName" />
-
     <!-- Ambient notification light color -->
     <java-symbol type="integer" name="config_ambientNotificationDefaultColor" />
 

@@ -526,6 +526,18 @@ public class MobileSignalController extends SignalController<
                 case 7:
                     resId = R.drawable.ic_volte_emui;
                     break;
+                // Margaritov's VoLTE icon
+                case 8:
+                    resId = R.drawable.ic_volte_margaritov;
+                    break;
+                // Margaritov's VoLTE icon2
+                case 9:
+                    resId = R.drawable.ic_volte_margaritov2;
+                    break;
+                // Vivo VoLTE icon
+                case 10:
+                    resId = R.drawable.ic_volte_vivo;
+                    break;
                 case 0:
                 default:
                     resId = R.drawable.ic_volte;
@@ -893,6 +905,9 @@ public class MobileSignalController extends SignalController<
                 // Simple3
                 case 7:
                     return TelephonyIcons.VOWIFI_Simple3;
+                // Vivo
+                case 8:
+                    return TelephonyIcons.VOWIFI_VIVO;
                 default:
                     return TelephonyIcons.VOWIFI;
             }

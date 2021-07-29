@@ -461,6 +461,8 @@ public final class DisconnectCause {
     public static final int HO_NOT_FEASIBLE = 125;
     /** @hide */
     public static final int NON_SELECTED_USER_CLEARING = 126;
+    /** @hide */
+    public static final int CONCURRENT_CALLS_NOT_POSSIBLE = 127;
 
     //*********************************************************************************************
     // When adding a disconnect type:
@@ -470,7 +472,7 @@ public final class DisconnectCause {
     // 4) Update toString() with the newly added disconnect type.
     // 5) Update android.telecom.DisconnectCauseUtil with any mappings to a telecom.DisconnectCause.
     //
-    // NextId: 124
+    // NextId: 128
     //*********************************************************************************************
 
     /**
@@ -483,7 +485,7 @@ public final class DisconnectCause {
      * Largest valid value for call disconnect codes.
      * @hide
      */
-    public static final int MAXIMUM_VALID_VALUE = NON_SELECTED_USER_CLEARING;
+    public static final int MAXIMUM_VALID_VALUE = CONCURRENT_CALLS_NOT_POSSIBLE;
 
     /** Private constructor to avoid class instantiation. */
     private DisconnectCause() {
@@ -747,6 +749,8 @@ public final class DisconnectCause {
             return "HO_NOT_FEASIBLE";
         case NON_SELECTED_USER_CLEARING:
             return "NON_SELECTED_USER_CLEARING";
+        case CONCURRENT_CALLS_NOT_POSSIBLE:
+            return "CONCURRENT_CALLS_NOT_POSSIBLE";
         default:
             return "INVALID: " + cause;
         }

@@ -88,7 +88,7 @@
     <dimen name="status_bar_left_clock_starting_padding">0dp</dimen>
 
     <!-- End padding for left-aligned status bar clock -->
-    <dimen name="status_bar_left_clock_end_padding">7dp</dimen>
+    <dimen name="status_bar_left_clock_end_padding">4dp</dimen>
 
     <!-- Spacing after the wifi signals that is present if there are any icons following it. -->
     <dimen name="status_bar_wifi_signal_spacer_width">2.5dp</dimen>
@@ -1290,9 +1290,9 @@
     <!-- Size of media cards in the QSPanel carousel -->
     <dimen name="qs_media_width">350dp</dimen>
     <dimen name="qs_media_padding">16dp</dimen>
-    <dimen name="qs_media_panel_outer_padding">16dp</dimen>
-    <dimen name="qs_media_album_size">52dp</dimen>
-    <dimen name="qs_media_icon_size">16dp</dimen>
+    <dimen name="qs_media_panel_outer_padding">12dp</dimen>
+    <dimen name="qs_media_album_size">115dp</dimen>
+    <dimen name="qs_media_icon_size">14dp</dimen>
     <dimen name="qs_center_guideline_padding">10dp</dimen>
     <dimen name="qs_seamless_icon_size">@dimen/qs_media_icon_size</dimen>
     <dimen name="qs_seamless_fallback_icon_size">@dimen/qs_seamless_icon_size</dimen>

@@ -5983,12 +5983,6 @@ public final class Settings {
         public static final String LOCKSCREEN_STATUS_BAR = "lockscreen_status_bar";
 
         /**
-         * Whether StatusBar icons should use app icon
-         * @hide
-         */
-        public static final String STATUSBAR_ICONS_STYLE = "statusbar_icons_style";
-
-        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *
@@ -6189,7 +6183,6 @@ public final class Settings {
             PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS);
             PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS_FORCE);
             PRIVATE_SETTINGS.add(FP_WAKE_UNLOCK);
-            PRIVATE_SETTINGS.add(STATUSBAR_ICONS_STYLE);
         }
 
         /**

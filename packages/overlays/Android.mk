@@ -62,6 +62,7 @@ LOCAL_REQUIRED_MODULES := \
 	FontNovaSourceOverlay \
 	FontTaurusSourceOverlay \
 	FontTechnicalSourceOverlay \
+	FontMontserratSourceOverlay \
 	IconPackCircularAndroidOverlay \
 	IconPackCircularLauncherOverlay \
 	IconPackCircularSettingsOverlay \
@@ -107,6 +108,10 @@ LOCAL_REQUIRED_MODULES := \
 	NavigationBarModeGesturalOverlayNarrowBack \
 	NavigationBarModeGesturalOverlayWideBack \
 	NavigationBarModeGesturalOverlayExtraWideBack \
+	SliderStyleOOS \
+	SliderStyleAosp \
+	SliderStyleRUI \
+	SliderStyleA12 \
 	preinstalled-packages-platform-overlays.xml
 
 include $(BUILD_PHONY_PACKAGE)

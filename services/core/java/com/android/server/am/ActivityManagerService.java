@@ -336,12 +336,12 @@ import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.DumpUtils;
 import com.android.internal.util.FastPrintWriter;
 import com.android.internal.util.FrameworkStatsLog;
+import com.android.internal.util.GamingModeHelper;
 import com.android.internal.util.MemInfoReader;
 import com.android.internal.util.Preconditions;
 import com.android.internal.util.function.HeptFunction;
 import com.android.internal.util.function.QuadFunction;
 import com.android.internal.util.function.TriFunction;
-import com.android.internal.util.gaming.GamingModeController;
 import com.android.server.AlarmManagerInternal;
 import com.android.server.AttributeCache;
 import com.android.server.DeviceIdleInternal;
@@ -1365,12 +1365,6 @@ public class ActivityManagerService extends IActivityManager.Stub
     private int mCurResumedUid = -1;
 
     /**
-     * For Gaming Mode to temporarily hold app package name & uid
-     */
-    private String mCurResumedPackagex = null;
-    private int mCurResumedUidx = -1;
-
-    /**
      * For reporting to battery stats the apps currently running foreground
      * service.  The ProcessMap is package/uid tuples; each of these contain
      * an array of the currently foreground processes.
@@ -1699,8 +1693,6 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     private CutoutFullscreenController mCutoutFullscreenController;
 
-    private GamingModeController mGamingModeController;
-
     private SystemSensorManager mSystemSensorManager;
 
     /**
@@ -1980,6 +1972,10 @@ public class ActivityManagerService extends IActivityManager.Stub
                 synchronized (ActivityManagerService.this) {
                     mProcessList.handleAllTrustStorageUpdateLocked();
                 }
+            } break;
+            case GamingModeHelper.MSG_SEND_GAMING_MODE_BROADCAST: {
+                Intent intent = (Intent) msg.obj;
+                mContext.sendBroadcastAsUser(intent, UserHandle.CURRENT_OR_SELF);
             } break;
             }
         }
@@ -7959,11 +7955,10 @@ public class ActivityManagerService extends IActivityManager.Stub
 
         //mUsageStatsService.monitorPackages();
 
+        mActivityTaskManager.mGamingModeHelper.setAmsHandler(mHandler);
+
         // Force full screen for devices with cutout
         mCutoutFullscreenController = new CutoutFullscreenController(mContext);
-
-        // Gaming mode provider
-        mGamingModeController = new GamingModeController(mContext);
 
         mSystemSensorManager = new SystemSensorManager(mContext, mHandler.getLooper());
 
@@ -16248,9 +16243,6 @@ public class ActivityManagerService extends IActivityManager.Stub
                                         mServices.forceStopPackageLocked(ssp, userId);
                                         mAtmInternal.onPackageUninstalled(ssp);
                                         mBatteryStatsService.notePackageUninstalled(ssp);
-                                        if (mGamingModeController != null) {
-                                             mGamingModeController.notePackageUninstalled(ssp);
-                                        }
                                         if (mSystemSensorManager != null) {
                                            mSystemSensorManager.notePackageUninstalled(ssp);
                                         }
@@ -17991,22 +17983,6 @@ public class ActivityManagerService extends IActivityManager.Stub
                 Binder.restoreCallingIdentity(identity);
             }
 
-            if (mCurResumedPackage != null && mGamingModeController != null && mGamingModeController.isGamingModeEnabled()) {
-                if (mGamingModeController.topAppChanged(mCurResumedPackage) && !mGamingModeController.isGamingModeActivated()) {
-                    Settings.System.putInt(mContext.getContentResolver(),
-                        Settings.System.GAMING_MODE_ACTIVE, 1);
-                    mCurResumedPackagex = mCurResumedPackage;
-                    mCurResumedUidx = uid;
-                } else if (mCurResumedUidx == uid && mGamingModeController.topAppChanged(mCurResumedPackagex)) {
-                    if (!mGamingModeController.isGamingModeActivated())
-                        Settings.System.putInt(mContext.getContentResolver(),
-                                Settings.System.GAMING_MODE_ACTIVE, 1);
-                } else if (!mGamingModeController.topAppChanged(mCurResumedPackage) &&
-                        mGamingModeController.isGamingModeActivated()) {
-                    Settings.System.putInt(mContext.getContentResolver(),
-                        Settings.System.GAMING_MODE_ACTIVE, 0);
-                }
-            }
         }
         return r;
     }

@@ -92,14 +92,6 @@
     <java-symbol type="bool" name="config_multiColorBatteryLed" />
     <java-symbol type="bool" name="config_ledCanPulse" />
 
-    <!-- Gaming mode -->
-    <java-symbol type="drawable" name="ic_gaming_notif" />
-    <java-symbol type="string" name="notification_channel_gaming" />
-    <java-symbol type="string" name="gaming_mode_notification_title" />
-    <java-symbol type="string" name="gaming_mode_notification_content" />
-    <java-symbol type="string" name="gaming_mode_enabled_toast" />
-    <java-symbol type="string" name="gaming_mode_disabled_toast" />
-
     <!-- Whether to show a custom view for FOD -->
     <java-symbol type="bool" name="config_needCustomFODView" />
 
@@ -227,5 +219,17 @@
     <java-symbol type="string" name="config_SmartChargingSysfsNode" />
     <java-symbol type="string" name="config_SmartChargingSuspendValue" />
     <java-symbol type="string" name="config_SmartChargingResumeValue" />
+
+    <!-- Path to fast charging status file to detect whether an oem fast charger is active -->
+    <java-symbol type="string" name="config_oemFastChargerStatusPath" />
+
+    <!-- Expected value from fast charging status file -->
+    <java-symbol type="string" name="config_oemFastChargerStatusValue" />
+
+    <!-- Screen recorder framerate limit -->
+    <java-symbol type="integer" name="config_screenRecorderMaxFramerate" />
+
+    <!-- Wheter device supports an gaming mode profiles -->
+    <java-symbol type="bool" name="config_gamingmode_performance" />
 
 </resources>

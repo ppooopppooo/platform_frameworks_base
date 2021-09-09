@@ -674,9 +674,9 @@
     <!-- Used for long press power torch feature - automatic turn off on timeout -->
     <protected-broadcast android:name="com.android.server.policy.PhoneWindowManager.ACTION_TORCH_OFF" />
 
-    <!-- Gaming mode -->
-    <protected-broadcast android:name="android.intent.action.GAMING_MODE_TURN_OFF" />
-    <protected-broadcast android:name="android.intent.action.GAMING_MODE_TURN_ON" />
+    <!-- Gaming Mode -->
+    <protected-broadcast android:name="exthmui.intent.action.GAMING_MODE_ON" />
+    <protected-broadcast android:name="exthmui.intent.action.GAMING_MODE_OFF" />
 
     <!-- ====================================================================== -->
     <!--                          RUNTIME PERMISSIONS                           -->
@@ -5196,7 +5196,7 @@
         </activity>
         <activity android:name="com.android.internal.app.PlatLogoActivity"
                 android:theme="@style/Theme.DeviceDefault.DayNight"
-                android:configChanges="orientation|keyboardHidden"
+                android:configChanges="orientation|keyboardHidden|screenSize"
                 android:icon="@drawable/platlogo"
                 android:process=":ui">
         </activity>

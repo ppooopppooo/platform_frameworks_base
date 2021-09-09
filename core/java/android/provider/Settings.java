@@ -4927,24 +4927,6 @@ public final class Settings {
         public static final String FORCE_FULLSCREEN_CUTOUT_APPS = "force_full_screen_cutout_apps";
 
         /**
-         * Whether the phone vibrates on call connect
-         * @hide
-         */
-        public static final String VIBRATE_ON_CONNECT = "vibrate_on_connect";
-
-         /**
-         * Whether the phone vibrates on call waiting
-         * @hide
-         */
-        public static final String VIBRATE_ON_CALLWAITING = "vibrate_on_callwaiting";
-
-         /**
-         * Whether the phone vibrates on disconnect
-         * @hide
-         */
-        public static final String VIBRATE_ON_DISCONNECT = "vibrate_on_disconnect";
-
-        /**
          * whether to enable or disable vibration on succesful fingerprint auth
          *
          * @hide
@@ -5404,9 +5386,17 @@ public final class Settings {
          * 2: mm-mm-mm
          * 3: da-da-dzzz
          * 4: da-dzzz-da
+         * 5: custom
          * @hide
          */
         public static final String RINGTONE_VIBRATION_PATTERN = "ringtone_vibration_pattern";
+		
+        /**
+         * Custom vibration pattern
+         * format: ms,ms,ms each a range from 0 to 1000 ms
+         * @hide
+         */
+        public static final String CUSTOM_RINGTONE_VIBRATION_PATTERN = "custom_ringtone_vibration_pattern";
 
 	/**
          * Whether the proximity sensor will adjust call to speaker
@@ -5456,64 +5446,6 @@ public final class Settings {
          * @hide
          */
         public static final String FOD_ICON = "fod_icon";
-
-        /**
-         * Gaming mode master switch
-         * @hide
-         */
-        public static final String GAMING_MODE_ENABLED = "gaming_mode_enabled";
-
-        /**
-         * Gaming mode active state - to disable via notification / tile
-         * @hide
-         */
-        public static final String GAMING_MODE_ACTIVE = "gaming_mode_active";
-
-
-        /**
-         * Package name of apps for enabling Gaming mode
-         * @hide
-         */
-        public static final String GAMING_MODE_VALUES = "gaming_mode_values";
-        public static final String GAMING_MODE_DUMMY = "gaming_mode_dummy";
-
-        /**
-         * Whether to disable hardware keys in gaming mode
-         * @hide
-         */
-        public static final String GAMING_MODE_HW_KEYS_TOGGLE = "gaming_mode_hw_keys_toggle";
-
-        /**
-         * Whether to disable heads up gaming mode
-         * @hide
-         */
-        public static final String GAMING_MODE_HEADSUP_TOGGLE = "gaming_mode_headsup_toggle";
-
-        /**
-         * Ringer in gaming mode (0:OFF, 1:Vibrate, 2:DND, 3:Silent)
-         * @hide
-         */
-        public static final String GAMING_MODE_RINGER_MODE = "gaming_mode_ringer_mode";
-
-        /**
-         * Whether to show notifications/toasts (0:OFF, 1:notifications, 2:toasts, 3: all)
-         * @hide
-         */
-        public static final String GAMING_MODE_NOTIFICATIONS = "gaming_mode_notifications";
-
-        /**
-         * Whether to lock brightness in gaming mode
-         * @hide
-         */
-        public static final String GAMING_MODE_MANUAL_BRIGHTNESS_TOGGLE = "gaming_mode_manual_brightness_toggle";
-
-        /**
-         * Whether to automatically enable the gaming mode
-         * if the launched app is a game
-         * @hide
-         */
-        public static final String GAMING_MODE_DYNAMIC_STATE = "gaming_mode_dynamic_state";
-
 
         /**
          * Disable dashboard conditions in settings
@@ -5983,6 +5915,147 @@ public final class Settings {
         public static final String LOCKSCREEN_STATUS_BAR = "lockscreen_status_bar";
 
         /**
+         * Whether to show quick settings on secure LockScreen
+         * @hide
+         */
+        public static final String LOCKSCREEN_ENABLE_QS = "lockscreen_enable_qs";
+
+        /**
+         * @hide
+         */
+        public static final String SLIDER_STYLE = "slider_style";
+        /**
+         * Whether to show charging animation on lock screen
+         * @hide
+         */
+        public static final String LOCKSCREEN_CHARGING_ANIMATION_STYLE = "lockscreen_charging_animation_style";
+
+        /**
+         * Whether to vibrate on call state change
+         * @hide
+         */
+        public static final String INCALL_FEEDBACK_VIBRATE = "incall_feeedback_vibrate";
+
+        /**
+          * Setting to enable/disable gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_ENABLED = "gaming_mode_enabled";
+
+        /**
+          * 0 - user is not in gaming mode
+          * 1 - user is in gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_ACTIVE = "gaming_mode_active";
+
+        /**
+          * Dynamically identify the top application and add it to the list
+          * @hide
+          */
+        public static final String GAMING_MODE_DYNAMIC_ADD = "gaming_mode_dynamic_add";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_APP_LIST = "gaming_mode_app_list";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_REMOVED_APP_LIST = "gaming_mode_removed_app_list";
+
+        /**
+          * Opacity adjustment for the GamingMode's menu
+          * @hide
+          */
+        public static final String GAMING_MODE_MENU_OPACITY = "gaming_mode_menu_opacity";
+
+        /**
+          * Auto answer call in gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_AUTO_ANSWER_CALL = "gaming_mode_auto_answer_call";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_AUTO_BRIGHTNESS = "gaming_mode_disable_auto_brightness";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_NOTIFICATION_ALERT = "gaming_mode_disable_notification_alert";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_RINGTONE = "gaming_mode_disable_ringtone";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_GESTURE = "gaming_mode_disable_gesture";
+
+        /**
+          * Change performance level in gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_CHANGE_PERFORMANCE_LEVEL = "gaming_mode_change_performance_level";
+
+        /**
+          * Prefermance level
+          * 0 - 6 : Powersave - Performance
+          * @hide
+          */
+        public static final String GAMING_MODE_PERFORMANCE_LEVEL = "gaming_mode_performance_level";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_QS_APP_LIST = "gaming_mode_qs_app_list";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_SHOW_DANMAKU = "gaming_mode_show_danmaku";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SPEED_HORIZONTAL = "gaming_mode_danmaku_speed_horizontal";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SPEED_VERTICAL = "gaming_mode_danmaku_speed_vertical";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SIZE_HORIZONTAL = "gaming_mode_danmaku_size_horizontal";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SIZE_VERTICAL = "gaming_mode_danmaku_size_vertical";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_DYNAMIC_NOTIFICATION_FILTER = "gaming_mode_danmaku_dynamic_notification_filter";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_APP_BLACKLIST = "gaming_mode_danmaku_app_blacklist";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_USE_GAME_DRIVER = "gaming_mode_use_game_driver";
+
+        /**
          * Keys we no longer back up under the current schema, but want to continue to
          * process when restoring historical backup datasets.
          *
@@ -6107,9 +6180,6 @@ public final class Settings {
             PRIVATE_SETTINGS.add(VOLUME_BUTTON_MUSIC_CONTROL);
             PRIVATE_SETTINGS.add(SCREENSHOT_SOUND);
             PRIVATE_SETTINGS.add(FORCE_FULLSCREEN_CUTOUT_APPS);
-            PRIVATE_SETTINGS.add(VIBRATE_ON_CONNECT);
-            PRIVATE_SETTINGS.add(VIBRATE_ON_CALLWAITING);
-            PRIVATE_SETTINGS.add(VIBRATE_ON_DISCONNECT);
             PRIVATE_SETTINGS.add(POCKET_JUDGE);
             PRIVATE_SETTINGS.add(SHOW_FOURG);
             PRIVATE_SETTINGS.add(SHOW_VOLTE_ICON);
@@ -6183,6 +6253,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS);
             PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS_FORCE);
             PRIVATE_SETTINGS.add(FP_WAKE_UNLOCK);
+            PRIVATE_SETTINGS.add(INCALL_FEEDBACK_VIBRATE);
         }
 
         /**

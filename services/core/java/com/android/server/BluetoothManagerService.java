@@ -171,8 +171,6 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
     private final ReentrantReadWriteLock mBluetoothLock = new ReentrantReadWriteLock();
     private boolean mBinding;
     private boolean mUnbinding;
-    private int mWaitForEnableRetry;
-    private int mWaitForDisableRetry;
 
     private BluetoothAirplaneModeListener mBluetoothAirplaneModeListener;
 
@@ -913,14 +911,15 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
         if (mState == BluetoothAdapter.STATE_ON
                 || mState == BluetoothAdapter.STATE_BLE_ON
                 || mState == BluetoothAdapter.STATE_TURNING_ON
-                || mState == BluetoothAdapter.STATE_TURNING_OFF) {
-            Log.d(TAG, "enableBLE(): Bluetooth already enabled");
+                || mState == BluetoothAdapter.STATE_TURNING_OFF
+                || mState == BluetoothAdapter.STATE_BLE_TURNING_ON) {
+            Log.d(TAG, "enableBLE(): Bluetooth is already enabled or is turning on");
             return true;
         }
         synchronized (mReceiver) {
             // waive WRITE_SECURE_SETTINGS permission check
-            sendEnableMsg(false,
-                    BluetoothProtoEnums.ENABLE_DISABLE_REASON_APPLICATION_REQUEST, packageName);
+            sendEnableMsg(false, BluetoothProtoEnums.ENABLE_DISABLE_REASON_APPLICATION_REQUEST,
+                    packageName, true);
         }
         return true;
     }
@@ -1739,6 +1738,8 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
 
     private class BluetoothHandler extends Handler {
         boolean mGetNameAddressOnly = false;
+        private int mWaitForEnableRetry;
+        private int mWaitForDisableRetry;
 
         BluetoothHandler(Looper looper) {
             super(looper);
@@ -1786,11 +1787,12 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
 
                 case MESSAGE_ENABLE:
                     int quietEnable = msg.arg1;
+                    int isBle  = msg.arg2;
                     if (mHandler.hasMessages(MESSAGE_HANDLE_DISABLE_DELAYED)
                             || mHandler.hasMessages(MESSAGE_HANDLE_ENABLE_DELAYED)) {
                         // We are handling enable or disable right now, wait for it.
                         mHandler.sendMessageDelayed(mHandler.obtainMessage(MESSAGE_ENABLE,
-                                quietEnable, 0), ENABLE_DISABLE_DELAY_MS);
+                                quietEnable, isBle), ENABLE_DISABLE_DELAY_MS);
                         break;
                     }
 
@@ -1805,13 +1807,28 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                     try {
                         mBluetoothLock.readLock().lock();
                         if (mBluetooth != null) {
+                            boolean isHandled = true;
                             int state = mBluetooth.getState();
-                            if (state == BluetoothAdapter.STATE_BLE_ON) {
-                                Slog.w(TAG, "BT Enable in BLE_ON State, going to ON");
-                                mBluetooth.onLeServiceUp();
-                                persistBluetoothSetting(BLUETOOTH_ON_BLUETOOTH);
-                                break;
+                            switch (state) {
+                                case BluetoothAdapter.STATE_BLE_ON:
+                                    if (isBle == 1) {
+                                        Slog.i(TAG, "Already at BLE_ON State");
+                                    } else {
+                                        Slog.w(TAG, "BT Enable in BLE_ON State, going to ON");
+                                        mBluetooth.onLeServiceUp();
+                                        persistBluetoothSetting(BLUETOOTH_ON_BLUETOOTH);
+                                    }
+                                    break;
+                                case BluetoothAdapter.STATE_BLE_TURNING_ON:
+                                case BluetoothAdapter.STATE_TURNING_ON:
+                                case BluetoothAdapter.STATE_ON:
+                                    Slog.i(TAG, "MESSAGE_ENABLE: already enabled");
+                                    break;
+                                default:
+                                    isHandled = false;
+                                    break;
                             }
+                            if (isHandled) break;
                         }
                     } catch (RemoteException e) {
                         Slog.e(TAG, "", e);
@@ -2395,6 +2412,16 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
         mContext.sendBroadcastAsUser(intent, UserHandle.ALL, BLUETOOTH_PERM);
     }
 
+    private boolean isBleState(int state) {
+        switch (state) {
+            case BluetoothAdapter.STATE_BLE_ON:
+            case BluetoothAdapter.STATE_BLE_TURNING_ON:
+            case BluetoothAdapter.STATE_BLE_TURNING_OFF:
+                return true;
+        }
+        return false;
+    }
+
     private void bluetoothStateChangeHandler(int prevState, int newState) {
         boolean isStandardBroadcast = true;
         if (prevState == newState) { // No change. Nothing to do.
@@ -2414,8 +2441,15 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                 sendBluetoothStateCallback(false);
                 unbindAndFinish();
                 sendBleStateChanged(prevState, newState);
-                // Don't broadcast as it has already been broadcast before
-                isStandardBroadcast = false;
+
+                /* Currently, the OFF intent is broadcasted externally only when we transition
+                 * from TURNING_OFF to BLE_ON state. So if the previous state is a BLE state,
+                 * we are guaranteed that the OFF intent has been broadcasted earlier and we
+                 * can safely skip it.
+                 * Conversely, if the previous state is not a BLE state, it indicates that some
+                 * sort of crash has occurred, moving us directly to STATE_OFF without ever
+                 * passing through BLE_ON. We should broadcast the OFF intent in this case. */
+                isStandardBroadcast = !isBleState(prevState);
 
             } else if (!intermediate_off) {
                 // connect to GattService
@@ -2468,6 +2502,11 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
                 // Show prevState of BLE_ON as OFF to standard users
                 prevState = BluetoothAdapter.STATE_OFF;
             }
+            if (DBG) {
+                Slog.d(TAG,
+                        "Sending State Change: " + BluetoothAdapter.nameForState(prevState) + " > "
+                                + BluetoothAdapter.nameForState(newState));
+            }
             Intent intent = new Intent(BluetoothAdapter.ACTION_STATE_CHANGED);
             intent.putExtra(BluetoothAdapter.EXTRA_PREVIOUS_STATE, prevState);
             intent.putExtra(BluetoothAdapter.EXTRA_STATE, newState);
@@ -2506,7 +2545,12 @@ class BluetoothManagerService extends IBluetoothManager.Stub {
     }
 
     private void sendEnableMsg(boolean quietMode, int reason, String packageName) {
-        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_ENABLE, quietMode ? 1 : 0, 0));
+        sendEnableMsg(quietMode, reason, packageName, false);
+    }
+
+    private void sendEnableMsg(boolean quietMode, int reason, String packageName, boolean isBle) {
+        mHandler.sendMessage(mHandler.obtainMessage(MESSAGE_ENABLE, quietMode ? 1 : 0,
+                  isBle ? 1 : 0));
         addActiveLog(reason, packageName, true);
         mLastEnabledTime = SystemClock.elapsedRealtime();
     }

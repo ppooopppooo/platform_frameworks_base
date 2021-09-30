@@ -6023,6 +6023,11 @@ public final class Settings {
         /**
           * @hide
           */
+        public static final String GAMING_MODE_SHOW_FPSINFO = "gaming_mode_show_fpsinfo";
+
+        /**
+          * @hide
+          */
         public static final String GAMING_MODE_DANMAKU_SPEED_HORIZONTAL = "gaming_mode_danmaku_speed_horizontal";
 
         /**
@@ -6066,6 +6071,12 @@ public final class Settings {
          * @hide
          */
         public static final String NOTIFICATION_MATERIAL_DISMISS = "notification_material_dismiss";
+
+        /**
+         * Holds current enabled volume panel implementation
+         * @hide
+         */
+        public static final String SYSTEMUI_PLUGIN_VOLUME = "systemui_plugin_volume";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to
@@ -6266,6 +6277,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(DOZE_BRIGHTNESS_FORCE);
             PRIVATE_SETTINGS.add(FP_WAKE_UNLOCK);
             PRIVATE_SETTINGS.add(INCALL_FEEDBACK_VIBRATE);
+            PRIVATE_SETTINGS.add(SYSTEMUI_PLUGIN_VOLUME);
         }
 
         /**

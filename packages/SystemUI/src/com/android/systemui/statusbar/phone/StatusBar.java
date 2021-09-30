@@ -606,6 +606,7 @@ public class StatusBar extends SystemUI implements DemoMode,
     private @TransitionMode int mStatusBarMode;
 
     private ViewMediatorCallback mKeyguardViewMediatorCallback;
+    private VolumePluginManager mVolumePluginManager;
     private final ScrimController mScrimController;
     protected DozeScrimController mDozeScrimController;
     private final Executor mUiBgExecutor;
@@ -843,8 +844,7 @@ public class StatusBar extends SystemUI implements DemoMode,
                 updateRoundedFwvals();
             } else if (uri.equals(Settings.System.getUriFor(Settings.System.NOTIFICATION_MATERIAL_DISMISS))) {
                 updateDismissStyle();
-            } else if (uri.equals(Settings.System.getUriFor(Settings.Secure.SYSUI_ROUNDED_FWVALS))) {
-                updateRoundedFwvals();
+            } else if (uri.equals(Settings.System.getUriFor(Settings.System.SWITCH_STYLE))) {
                 stockSwitchStyle();
                 updateSwitchStyle();
             }
@@ -1098,6 +1098,8 @@ public class StatusBar extends SystemUI implements DemoMode,
         mKeyguardManager = (KeyguardManager) mContext.getSystemService(Context.KEYGUARD_SERVICE);
         mWallpaperSupported =
                 mContext.getSystemService(WallpaperManager.class).isWallpaperSupported();
+
+        mVolumePluginManager = new VolumePluginManager(mContext, mHandler);
 
         // Connect in to the status bar manager service
         mCommandQueue.addCallback(this);
@@ -1354,6 +1356,8 @@ public class StatusBar extends SystemUI implements DemoMode,
         mHeadsUpManager.addListener(mVisualStabilityManager);
         mNotificationPanelViewController.setHeadsUpManager(mHeadsUpManager);
         mNotificationLogger.setHeadsUpManager(mHeadsUpManager);
+
+        updateDismissStyle();
 
         updateNavigationBar(true);
 

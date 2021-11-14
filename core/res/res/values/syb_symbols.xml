@@ -67,6 +67,9 @@
   <!-- Expected value from fast charging status file -->
   <java-symbol type="string" name="config_oemFastChargerStatusValue" />
 
+    <!-- Whether devices suports in-display fingerprint when screen is off -->
+    <java-symbol type="bool" name="config_supportScreenOffUdfps" />
+
   <!-- LiveDisplay -->
   <java-symbol type="string" name="live_display_title" />
   <java-symbol type="string" name="live_display_hint" />

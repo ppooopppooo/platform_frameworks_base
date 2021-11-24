@@ -26,9 +26,6 @@
     <!-- Pocket Lock -->
     <bool name="config_pocketModeSupported">true</bool>
 
-    <!-- Defines custom OEM sensor for pocket detection. -->
-    <string name="config_pocketJudgeVendorSensorName"></string>
-
     <!-- Default values for LiveDisplay -->
     <integer name="config_dayColorTemperature">6500</integer>
     <integer name="config_nightColorTemperature">4800</integer>

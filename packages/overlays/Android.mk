@@ -22,10 +22,42 @@ LOCAL_NOTICE_FILE := $(LOCAL_PATH)/../../NOTICE
 LOCAL_REQUIRED_MODULES := \
 	DisplayCutoutEmulationCornerOverlay \
 	DisplayCutoutEmulationDoubleOverlay \
-    DisplayCutoutEmulationHoleOverlay \
+	DisplayCutoutEmulationHoleOverlay \
 	DisplayCutoutEmulationTallOverlay \
 	DisplayCutoutEmulationWaterfallOverlay \
+	FontAclonicaSourceOverlay \
+	FontAmaranteSourceOverlay \
+	FontBariolSourceOverlay \
+	FontCagliostroSourceOverlay \
+	FontComicSansSourceOverlay \
+	FontCoolstorySourceOverlay \
+	FontGoogleSansSourceOverlay \
+	FontLGSmartGothicSourceOverlay \
 	FontNotoSerifSourceOverlay \
+	FontOneplusSlateSource \
+	FontRosemarySourceOverlay \
+	FontSamsungOneSourceOverlay \
+	FontSonySketchSourceOverlay \
+	FontSurferSourceOverlay \
+	FontNokiaPureSourceOverlay \
+	FontFifa2018SourceOverlay \
+	FontOswaldSourceOverlay \
+	FontExo2SourceOverlay \
+	FontUbuntuRegularSourceOverlay \
+	FontRobotoCondensedLightSourceOverlay \
+	FontStoropiaSourceOverlay \
+	FontRoundedEleganceSourceOverlay \
+	FontCaviarDreamsSourceOverlay \
+	FontSanFranciscoDisplayProSourceOverlay \
+	FontDomkratSourceOverlay \
+	FontFakedesSourceOverlay \
+	FontHondaSourceOverlay \
+	FontHortensiaSourceOverlay \
+	FontMinusmanSourceOverlay \
+	FontNovaSourceOverlay \
+	FontTaurusSourceOverlay \
+	FontTechnicalSourceOverlay \
+	FontMontserratSourceOverlay \
 	NavigationBarMode3ButtonOverlay \
 	NavigationBarMode2ButtonOverlay \
 	NavigationBarModeGesturalOverlay \

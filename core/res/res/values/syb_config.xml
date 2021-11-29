@@ -24,7 +24,7 @@
     <string name="config_pocketBridgeSysfsInpocket"></string>
 
     <!-- Pocket Lock -->
-    <bool name="config_pocketModeSupported">true</bool>
+    <bool name="config_pocketModeSupported">false</bool>
 
     <!-- Default values for LiveDisplay -->
     <integer name="config_dayColorTemperature">6500</integer>

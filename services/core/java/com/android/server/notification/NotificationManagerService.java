@@ -1947,7 +1947,7 @@ public class NotificationManagerService extends SystemService {
             ContentResolver resolver = getContext().getContentResolver();
             if (uri == null || NOTIFICATION_LIGHT_PULSE_URI.equals(uri)) {
                 boolean pulseEnabled = Settings.System.getIntForUser(resolver,
-                            Settings.System.NOTIFICATION_LIGHT_PULSE, 0, UserHandle.USER_CURRENT)
+                            Settings.System.NOTIFICATION_LIGHT_PULSE, 1, UserHandle.USER_CURRENT)
                         != 0;
                 if (mNotificationPulseEnabled != pulseEnabled) {
                     mNotificationPulseEnabled = pulseEnabled;
@@ -5571,6 +5571,16 @@ public class NotificationManagerService extends SystemService {
             Slog.e(TAG, "exiting pullStats: bad request");
             return 0;
         }
+
+        @Override
+        public void forceShowLedLight(int color) {
+            forceShowLed(color);
+        }
+
+        @Override
+        public void forcePulseLedLight(int color, int onTime, int offTime) {
+            forcePulseLed(color, onTime, offTime);
+        }
     };
 
     protected void checkNotificationListenerAccess() {
@@ -7502,7 +7512,7 @@ public class NotificationManagerService extends SystemService {
         final int buzzBeepBlink = (buzz ? 1 : 0) | (beep ? 2 : 0) | (blink ? 4 : 0);
         if (buzzBeepBlink > 0) {
             // Ignore summary updates because we don't display most of the information.
-            if (record.getSbn().isGroup() && record.getSbn().getNotification().isGroupSummary()) {
+            if (!blink && record.getSbn().isGroup() && record.getSbn().getNotification().isGroupSummary()) {
                 if (DEBUG_INTERRUPTIVENESS) {
                     Slog.v(TAG, "INTERRUPTIVENESS: "
                             + record.getKey() + " is not interruptive: summary");
@@ -7529,6 +7539,24 @@ public class NotificationManagerService extends SystemService {
         return buzzBeepBlink;
     }
 
+    private void forceShowLed(int color) {
+        if (color != -1) {
+            mNotificationLight.turnOff();
+            mNotificationLight.setColor(color);
+        } else {
+            mNotificationLight.turnOff();
+        }
+    }
+
+    private void forcePulseLed(int color, int onTime, int offTime) {
+        if (color != -1) {
+            mNotificationLight.turnOff();
+            mNotificationLight.setFlashing(color, LogicalLight.LIGHT_FLASH_TIMED, onTime, offTime);
+        } else {
+            mNotificationLight.turnOff();
+        }
+    }
+
     @GuardedBy("mNotificationLock")
     boolean canShowLightsLocked(final NotificationRecord record, boolean aboveThreshold) {
         // device lacks light
@@ -7552,7 +7580,7 @@ public class NotificationManagerService extends SystemService {
             return false;
         }
         // Suppressed because it's a silent update
-        final Notification notification = record.getNotification();
+/*        final Notification notification = record.getNotification();
         if (record.isUpdate && (notification.flags & FLAG_ONLY_ALERT_ONCE) != 0) {
             return false;
         }
@@ -7564,6 +7592,7 @@ public class NotificationManagerService extends SystemService {
         if (isInCall()) {
             return false;
         }
+*/
         // check current user
         if (!isNotificationForCurrentUser(record)) {
             return false;

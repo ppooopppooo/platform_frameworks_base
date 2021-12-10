@@ -75,9 +75,9 @@ class ChargingRippleView(context: Context?, attrs: AttributeSet?) : View(context
         }
         val animator = ValueAnimator.ofFloat(0f, 1f)
         animator.duration = duration
-        animator.addUpdateListener { animator ->
-            val now = animator.currentPlayTime
-            val progress = animator.animatedValue as Float
+        animator.addUpdateListener {
+            val now = it.currentPlayTime
+            val progress = it.animatedValue as Float
             rippleShader.progress = progress
             rippleShader.distortionStrength = 1 - progress
             rippleShader.time = now.toFloat()
@@ -104,7 +104,7 @@ class ChargingRippleView(context: Context?, attrs: AttributeSet?) : View(context
         // the active effect area. Values here should be kept in sync with the
         // animation implementation in the ripple shader.
         val maskRadius = (1 - (1 - rippleShader.progress) * (1 - rippleShader.progress) *
-                (1 - rippleShader.progress)) * radius * 1.5f
+                (1 - rippleShader.progress)) * radius * 2
         canvas?.drawCircle(origin.x, origin.y, maskRadius, ripplePaint)
     }
 }

@@ -95,5 +95,15 @@ public class SystemSettings {
         Settings.System.GLOBAL_ACTIONS_USERS,
         Settings.System.GLOBAL_ACTIONS_MAX_COLUMNS,
         Settings.System.GLOBAL_ACTIONS_MAX_ROWS,
+        Settings.System.FULLSCREEN_GESTURES,
+        Settings.System.DOZE_ON_CHARGE,
+        Settings.System.NOTIFICATION_PULSE,
+        Settings.System.AOD_NOTIFICATION_PULSE,
+        Settings.System.AOD_NOTIFICATION_PULSE_CLEAR,
+        Settings.System.NOTIFICATION_PULSE_COLOR_MODE,
+        Settings.System.NOTIFICATION_PULSE_COLOR,
+        Settings.System.NOTIFICATION_PULSE_REPEATS,
+        Settings.System.AOD_NOTIFICATION_PULSE_TIMEOUT,
+        Settings.System.NOTIFICATION_PULSE_DURATION,
     };
 }

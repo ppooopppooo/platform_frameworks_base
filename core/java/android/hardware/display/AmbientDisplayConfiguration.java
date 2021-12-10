@@ -18,6 +18,9 @@ package android.hardware.display;
 
 import android.annotation.TestApi;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.SystemProperties;
 import android.provider.Settings;
@@ -32,6 +35,8 @@ import com.android.internal.R;
  */
 @TestApi
 public class AmbientDisplayConfiguration {
+
+    private static final IntentFilter sIntentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 
     private final Context mContext;
     private final boolean mAlwaysOnByDefault;
@@ -177,8 +182,39 @@ public class AmbientDisplayConfiguration {
      */
     @TestApi
     public boolean alwaysOnEnabled(int user) {
-        return boolSetting(Settings.Secure.DOZE_ALWAYS_ON, user, mAlwaysOnByDefault ? 1 : 0)
-                && alwaysOnAvailable() && !accessibilityInversionEnabled(user);
+        return alwaysOnEnabledSetting(user) || alwaysOnChargingEnabled(user) || alwaysOnAmbientLightEnabled(user);
+    }
+
+    private boolean boolSettingSystem(String name, int user, int def) {
+        return Settings.System.getIntForUser(mContext.getContentResolver(), name, def, user) != 0;
+    }
+
+    public boolean alwaysOnEnabledSetting(int user) {
+        final boolean alwaysOnEnabled = Settings.Secure.getIntForUser(
+                mContext.getContentResolver(), Settings.Secure.DOZE_ALWAYS_ON,
+                mAlwaysOnByDefault ? 1 : 0, user) == 1;
+        return alwaysOnEnabled && alwaysOnAvailable() && !accessibilityInversionEnabled(user);
+    }
+
+    public boolean alwaysOnChargingEnabled(int user) {
+        final boolean dozeOnChargeEnabled = Settings.System.getIntForUser(
+                mContext.getContentResolver(), Settings.System.DOZE_ON_CHARGE, 0, user) == 1;
+        if (dozeOnChargeEnabled) {
+            final Intent intent = mContext.registerReceiver(null, sIntentFilter);
+            if (intent != null) {
+                return intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            }
+        }
+        return false;
+    }
+
+    public boolean alwaysOnAmbientLightEnabled(int user) {
+        final boolean ambientLightsEnabled = boolSettingSystem(Settings.System.AOD_NOTIFICATION_PULSE, user, 0);
+        if (ambientLightsEnabled) {
+            boolean ambientLightsActivated = boolSettingSystem(Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, user, 0);
+            return ambientLightsActivated && !accessibilityInversionEnabled(user) && alwaysOnAvailable() && alwaysOnEnabledSetting(user);
+        }
+        return false;
     }
 
     /**

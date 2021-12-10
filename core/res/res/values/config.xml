@@ -145,17 +145,17 @@
     <bool name="config_disableTransitionAnimation">false</bool>
 
     <!-- The duration (in milliseconds) of a short animation. -->
-    <integer name="config_shortAnimTime">200</integer>
+    <integer name="config_shortAnimTime">100</integer>
 
     <!-- The duration (in milliseconds) of a medium-length animation. -->
-    <integer name="config_mediumAnimTime">400</integer>
+    <integer name="config_mediumAnimTime">200</integer>
 
     <!-- The duration (in milliseconds) of a long animation. -->
-    <integer name="config_longAnimTime">500</integer>
+    <integer name="config_longAnimTime">250</integer>
 
     <!-- The duration (in milliseconds) of the activity open/close and fragment open/close animations. -->
-    <integer name="config_activityShortDur">150</integer>
-    <integer name="config_activityDefaultDur">220</integer>
+    <integer name="config_activityShortDur">75</integer>
+    <integer name="config_activityDefaultDur">110</integer>
 
     <!-- Fade out time for screen rotation -->
     <integer name="config_screen_rotation_fade_out">116</integer>
@@ -960,6 +960,20 @@
             5 - Go to assistant (Settings.Secure.ASSISTANT)
     -->
     <integer name="config_longPressOnPowerBehavior">5</integer>
+
+    <!-- The time in milliseconds after which a press on power button is considered "long". -->
+    <integer name="config_longPressOnPowerDurationMs">500</integer>
+
+    <!-- The possible UI options to be surfaced for configuring long press power on duration
+         action. Value set in config_longPressOnPowerDurationMs should be one of the available
+         options to allow users to restore default. -->
+    <integer-array name="config_longPressOnPowerDurationSettings">
+        <item>250</item>
+        <item>350</item>
+        <item>500</item>
+        <item>650</item>
+        <item>750</item>
+    </integer-array>
 
     <!-- Whether the setting to change long press on power behaviour from default to assistant (5)
          is available in Settings.
@@ -3525,7 +3539,7 @@
              1 - 3 snap targets: fixed ratio, 1:1, (1 - fixed ratio)
              2 - 1 snap target: 1:1
     -->
-    <integer name="config_dockedStackDividerSnapMode">0</integer>
+    <integer name="config_dockedStackDividerSnapMode">1</integer>
 
     <!-- The maximum aspect ratio (longerSide/shorterSide) that is treated as close-to-square. The
          orientation requests from apps would be ignored if the display is close-to-square. -->
@@ -4567,6 +4581,13 @@
 
     <!-- Indicates whether device has a power button fingerprint sensor. -->
     <bool name="config_is_powerbutton_fps" translatable="false" >false</bool>
+
+    <!-- When each intermediate UDFPS enroll stage ends, as a fraction of total progress. -->
+    <string-array name="config_udfps_enroll_stage_thresholds" translatable="false">
+        <item>0.25</item>
+        <item>0.5</item>
+        <item>0.75</item>
+    </string-array>
 
     <!-- Messages that should not be shown to the user during face auth enrollment. This should be
          used to hide messages that may be too chatty or messages that the user can't do much about.

@@ -557,11 +557,14 @@ final class DefaultPermissionGrantPolicy {
         grantPermissionsToSystemPackage(pm, verifier, userId, PHONE_PERMISSIONS, SMS_PERMISSIONS);
 
         // SetupWizard
-        grantPermissionsToSystemPackage(pm,
-                ArrayUtils.firstOrNull(getKnownPackages(
-                        PackageManagerInternal.PACKAGE_SETUP_WIZARD, userId)), userId,
-                PHONE_PERMISSIONS, CONTACTS_PERMISSIONS, ALWAYS_LOCATION_PERMISSIONS,
-                CAMERA_PERMISSIONS);
+        final String setupWizardPackage = ArrayUtils.firstOrNull(getKnownPackages(
+                PackageManagerInternal.PACKAGE_SETUP_WIZARD, userId));
+        grantPermissionsToSystemPackage(pm, setupWizardPackage, userId, PHONE_PERMISSIONS,
+                CONTACTS_PERMISSIONS, ALWAYS_LOCATION_PERMISSIONS, CAMERA_PERMISSIONS);
+        if (mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE, 0)) {
+            grantPermissionsToSystemPackage(
+                    pm, setupWizardPackage, userId, NEARBY_DEVICES_PERMISSIONS);
+        }
 
         // Camera
         grantPermissionsToSystemPackage(pm,
@@ -873,6 +876,11 @@ final class DefaultPermissionGrantPolicy {
         grantSystemFixedPermissionsToSystemPackage(pm,
                 MidiManager.BLUETOOTH_MIDI_SERVICE_PACKAGE, userId,
                 NEARBY_DEVICES_PERMISSIONS);
+
+        // Mediascanner
+        grantSystemFixedPermissionsToSystemPackage(pm,
+                getDefaultProviderAuthorityPackage("com.android.providers.media.MediaProvider", userId), userId,
+                STORAGE_PERMISSIONS);
     }
 
     private String getDefaultSystemHandlerActivityPackageForCategory(PackageManagerWrapper pm,

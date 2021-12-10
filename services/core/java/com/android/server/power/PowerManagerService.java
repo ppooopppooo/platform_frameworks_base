@@ -274,6 +274,7 @@ public final class PowerManagerService extends SystemService
     private final BatterySavingStats mBatterySavingStats;
     private final AttentionDetector mAttentionDetector;
     private final FaceDownDetector mFaceDownDetector;
+    private final ScreenUndimDetector mScreenUndimDetector;
     private final BinderService mBinderService;
     private final LocalService mLocalService;
     private final NativeWrapper mNativeWrapper;
@@ -837,9 +838,10 @@ public final class PowerManagerService extends SystemService
     static class Injector {
         Notifier createNotifier(Looper looper, Context context, IBatteryStats batteryStats,
                 SuspendBlocker suspendBlocker, WindowManagerPolicy policy,
-                FaceDownDetector faceDownDetector) {
+                FaceDownDetector faceDownDetector, ScreenUndimDetector screenUndimDetector) {
             return new Notifier(
-                    looper, context, batteryStats, suspendBlocker, policy, faceDownDetector);
+                    looper, context, batteryStats, suspendBlocker, policy, faceDownDetector,
+                    screenUndimDetector);
         }
 
         SuspendBlocker createSuspendBlocker(PowerManagerService service, String name) {
@@ -960,6 +962,7 @@ public final class PowerManagerService extends SystemService
                 mInjector.createAmbientDisplaySuppressionController(context);
         mAttentionDetector = new AttentionDetector(this::onUserAttention, mLock);
         mFaceDownDetector = new FaceDownDetector(this::onFlip);
+        mScreenUndimDetector = new ScreenUndimDetector();
 
         mBatterySavingStats = new BatterySavingStats(mLock);
         mBatterySaverPolicy =
@@ -1128,6 +1131,10 @@ public final class PowerManagerService extends SystemService
     }
 
     public void systemReady(IAppOpsService appOps) {
+        // set initial value
+        Settings.System.putIntForUser(mContext.getContentResolver(),
+                Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, 0, UserHandle.USER_CURRENT);
+
         synchronized (mLock) {
             mSystemReady = true;
             mAppOps = appOps;
@@ -1146,7 +1153,7 @@ public final class PowerManagerService extends SystemService
             mBatteryStats = BatteryStatsService.getService();
             mNotifier = mInjector.createNotifier(Looper.getMainLooper(), mContext, mBatteryStats,
                     mInjector.createSuspendBlocker(this, "PowerManagerService.Broadcasts"),
-                    mPolicy, mFaceDownDetector);
+                    mPolicy, mFaceDownDetector, mScreenUndimDetector);
 
             mWirelessChargerDetector = mInjector.createWirelessChargerDetector(sensorManager,
                     mInjector.createSuspendBlocker(
@@ -1181,6 +1188,7 @@ public final class PowerManagerService extends SystemService
         mBatterySaverController.systemReady();
         mBatterySaverPolicy.systemReady();
         mFaceDownDetector.systemReady(mContext);
+        mScreenUndimDetector.systemReady(mContext);
 
         // Register for settings changes.
         resolver.registerContentObserver(Settings.Secure.getUriFor(
@@ -1222,6 +1230,13 @@ public final class PowerManagerService extends SystemService
         resolver.registerContentObserver(Settings.Global.getUriFor(
                 Settings.Global.DEVICE_DEMO_MODE),
                 false, mSettingsObserver, UserHandle.USER_SYSTEM);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.AOD_NOTIFICATION_PULSE_TRIGGER),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+        resolver.registerContentObserver(Settings.System.getUriFor(
+                Settings.System.AOD_NOTIFICATION_PULSE),
+                false, mSettingsObserver, UserHandle.USER_ALL);
+
         IVrManager vrManager = IVrManager.Stub.asInterface(getBinderService(Context.VR_SERVICE));
         if (vrManager != null) {
             try {
@@ -1325,6 +1340,26 @@ public final class PowerManagerService extends SystemService
                 Settings.Global.STAY_ON_WHILE_PLUGGED_IN, BatteryManager.BATTERY_PLUGGED_AC);
         mTheaterModeEnabled = Settings.Global.getInt(mContext.getContentResolver(),
                 Settings.Global.THEATER_MODE_ON, 0) == 1;
+        mAlwaysOnEnabled = mAmbientDisplayConfiguration.alwaysOnEnabled(UserHandle.USER_CURRENT);
+
+        boolean mAmbientLights = Settings.System.getIntForUser(
+                mContext.getContentResolver(), Settings.System.AOD_NOTIFICATION_PULSE,
+                0, UserHandle.USER_CURRENT) != 0;
+        boolean aodEnabled = Settings.Secure.getIntForUser(resolver,
+                Settings.Secure.DOZE_ALWAYS_ON, 0, UserHandle.USER_CURRENT) == 1;
+        if (mAmbientLights && aodEnabled) {
+            boolean dozeOnNotification = Settings.System.getIntForUser(resolver,
+                    Settings.System.AOD_NOTIFICATION_PULSE_TRIGGER, 0, UserHandle.USER_CURRENT) != 0;
+            Settings.System.putIntForUser(resolver,
+                     Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, dozeOnNotification ? 1 : 0,
+                     UserHandle.USER_CURRENT);
+        } else {
+             Settings.System.putIntForUser(resolver,
+                     Settings.System.AOD_NOTIFICATION_PULSE_ACTIVATED, 0,
+                     UserHandle.USER_CURRENT);
+        }
+        // depends on AOD_NOTIFICATION_PULSE_ACTIVATED - so MUST be afterwards
+        // no need to call us again
         mAlwaysOnEnabled = mAmbientDisplayConfiguration.alwaysOnEnabled(UserHandle.USER_CURRENT);
 
         if (mSupportsDoubleTapWakeConfig) {
@@ -1870,15 +1905,19 @@ public final class PowerManagerService extends SystemService
         }
 
         if (eventTime < mLastWakeTime
-                || !PowerManagerInternal.isInteractive(getWakefulnessLocked())
                 || !mSystemReady
                 || !mBootCompleted) {
             return false;
         }
 
         final int wakefulness = mDisplayGroupPowerStateMapper.getWakefulnessLocked(groupId);
-        if (!PowerManagerInternal.isInteractive(wakefulness)) {
-            return false;
+
+        // dont check current state
+        if ((flags & PowerManager.GO_TO_SLEEP_FLAG_FORCE) == 0) {
+            if (!PowerManagerInternal.isInteractive(getWakefulnessLocked()) ||
+                !PowerManagerInternal.isInteractive(wakefulness)) {
+                return false;
+            }
         }
 
         Trace.traceBegin(Trace.TRACE_TAG_POWER, "powerOffDisplay");
@@ -3192,6 +3231,7 @@ public final class PowerManagerService extends SystemService
 
                 final boolean ready = mDisplayManagerInternal.requestPowerState(groupId,
                         displayPowerRequest, mRequestWaitForNegativeProximity);
+                mNotifier.onScreenPolicyUpdate(displayPowerRequest.policy);
 
                 if (DEBUG_SPEW) {
                     Slog.d(TAG, "updateDisplayPowerStateLocked: displayReady=" + ready

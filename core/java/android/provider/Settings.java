@@ -2242,6 +2242,21 @@ public final class Settings {
     public static final String ACTION_TETHER_SETTINGS = "android.settings.TETHER_SETTINGS";
 
     /**
+     * Activity Action: Show screen that lets user configure wifi tethering.
+     * <p>
+     * In some cases, a matching Activity may not exist, so ensure you safeguard against this.
+     * <p>
+     * Input: Nothing
+     * <p>
+     * Output: Nothing
+     *
+     * @hide
+     */
+    @SdkConstant(SdkConstantType.ACTIVITY_INTENT_ACTION)
+    public static final String ACTION_WIFI_TETHER_SETTING =
+            "com.android.settings.WIFI_TETHER_SETTINGS";
+
+    /**
      * Broadcast to trigger notification of asking user to enable MMS.
      * Need to specify {@link #EXTRA_ENABLE_MMS_DATA_REQUEST_REASON} and {@link #EXTRA_SUB_ID}.
      *
@@ -5861,6 +5876,123 @@ public final class Settings {
          * @hide
          */
         public static final String BATTERY_LIGHT_REALLYFULL_COLOR = "battery_light_reallyfull_color";
+
+        /**
+         * Disable power menu on secure lock screens
+         *
+         * @hide
+         */
+        public static final String LOCK_POWER_MENU_DISABLED = "lockscreen_power_menu_disabled";
+
+       /**
+         * @hide
+         */
+        public static final String USE_OLD_MOBILETYPE = "use_old_mobiletype";
+
+        /**
+         * Wheter to play notification sound and vibration if screen is ON
+         * 0 - never
+         * 1 - always
+         * @hide
+         */
+
+        public static final String NOTIFICATION_SOUND_VIB_SCREEN_ON = "notification_sound_vib_screen_on";
+
+        /**
+         * Whether to hide navbar pill and keyboard space.
+         * Default 0.
+         * @hide
+         */
+        public static final String FULLSCREEN_GESTURES = "fullscreen_gestures";
+
+        /**
+         * Whether to enable PULSE Edge lights
+         * @hide
+         */
+        @Readable
+        public static final String NOTIFICATION_PULSE = "pulse_ambient_light";
+
+        /**
+         * Whether to enable Ambient Edge lights
+         * @hide
+         */
+        @Readable
+        public static final String AOD_NOTIFICATION_PULSE = "ambient_notification_light_enabled";
+
+        /**
+         * Whether to hide everything on aod when ambient lights are enabled
+         * @hide
+         */
+        @Readable
+        public static final String AOD_NOTIFICATION_PULSE_CLEAR = "ambient_notification_light_hide_aod";
+
+        /**
+         * Whether to change aod pulse state
+         * @hide
+         */
+        @Readable
+        public static final String AOD_NOTIFICATION_PULSE_TRIGGER = "ambient_notification_light";
+
+        /**
+         * Pulse ambient lights color mode
+         * 0 - Default (Accent)
+         * 1 - Wallpaper
+         * 2 - Notification
+         * 3 - Custom color
+         * @hide
+         */
+        @Readable
+        public static final String NOTIFICATION_PULSE_COLOR_MODE = "ambient_notification_color_mode";
+
+        /**
+         * Pulse Ambient lights color
+         * @hide
+         */
+        @Readable
+        public static final String NOTIFICATION_PULSE_COLOR = "ambient_notification_light_color";
+
+        /**
+         * Whether Ambient Edge lights are activated
+         * @hide
+         */
+        @Readable
+        public static final String AOD_NOTIFICATION_PULSE_ACTIVATED = "ambient_notification_light_activated";
+
+        /**
+         * helper setting to contain the current pulse reason so we can check
+         * if it has been triggered from a notification or a gesture
+         * @hide
+         */
+        @Readable
+        public static final String PULSE_TRIGGER_REASON = "pulse_trigger_reason";
+
+        /**
+         * Notification pulse repeats count - 0 means go by timeout
+         * @hide
+         */
+        @Readable
+        public static final String NOTIFICATION_PULSE_REPEATS = "ambient_notification_light_repeats";
+
+        /**
+         * Timeout for ambient pulse in seconds - 0 is no timeout
+         * @hide
+         */
+        @Readable
+        public static final String AOD_NOTIFICATION_PULSE_TIMEOUT = "ambient_notification_light_timeout";
+
+        /**
+         * Notification pulse animation duration in seconds
+         * @hide
+         */
+        @Readable
+        public static final String NOTIFICATION_PULSE_DURATION = "ambient_notification_light_duration";
+
+        /**
+         * Whether to enable DOZE only when charging
+         * @hide
+         */
+        public static final String DOZE_ON_CHARGE = "doze_on_charge";
+
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to
@@ -12627,6 +12759,12 @@ public final class Settings {
         public static final String WIFI_MIGRATION_COMPLETED = "wifi_migration_completed";
 
         /**
+         * Whether UWB should be enabled.
+         * @hide
+         */
+        public static final String UWB_ENABLED = "uwb_enabled";
+
+        /**
          * Value to specify whether network quality scores and badging should be shown in the UI.
          *
          * Type: int (0 for false, 1 for true)
@@ -14452,13 +14590,6 @@ public final class Settings {
                 "angle_gl_driver_selection_values";
 
         /**
-         * List of package names that should check ANGLE rules
-         * @hide
-         */
-        @Readable
-        public static final String ANGLE_ALLOWLIST = "angle_allowlist";
-
-        /**
          * Lists of ANGLE EGL features for debugging.
          * Each list of features is separated by a comma, each feature in each list is separated by
          * a colon.
@@ -15681,6 +15812,10 @@ public final class Settings {
         @Readable
         public static final String MAX_SOUND_TRIGGER_DETECTION_SERVICE_OPS_PER_DAY =
                 "max_sound_trigger_detection_service_ops_per_day";
+        /**
+         * @hide
+         */
+        public static final String SHOW_CPU_OVERLAY = "show_cpu_overlay";
 
         /**
          * Indicates whether aware is available in the current location.
@@ -15698,6 +15833,16 @@ public final class Settings {
         @Readable
         public static final String POWER_BUTTON_LONG_PRESS =
                 "power_button_long_press";
+
+        /**
+         * Override internal R.integer.config_longPressOnPowerDurationMs. It determines the length
+         * of power button press to be considered a long press in milliseconds.
+         * Used by PhoneWindowManager.
+         * @hide
+         */
+        @Readable
+        public static final String POWER_BUTTON_LONG_PRESS_DURATION_MS =
+                "power_button_long_press_duration_ms";
 
         /**
          * Overrides internal R.integer.config_veryLongPressOnPowerBehavior.
@@ -17494,6 +17639,30 @@ public final class Settings {
         @SdkConstant(SdkConstant.SdkConstantType.ACTIVITY_INTENT_ACTION)
         public static final String ACTION_VOLUME =
                 "android.settings.panel.action.VOLUME";
+
+        /**
+         * Activity Action: Show a settings dialog containing controls for Mobile Data.
+         * <p>
+         * Input: Nothing.
+         * <p>
+         * Output: Nothing.
+         * @hide
+         */
+        @SdkConstant(SdkConstant.SdkConstantType.ACTIVITY_INTENT_ACTION)
+        public static final String ACTION_MOBILE_DATA =
+                "android.settings.panel.action.MOBILE_DATA";
+
+        /**
+         * Activity Action: Show a settings dialog containing controls for Bluetooth.
+         * <p>
+         * Input: Nothing.
+         * <p>
+         * Output: Nothing.
+         * @hide
+         */
+        @SdkConstant(SdkConstant.SdkConstantType.ACTIVITY_INTENT_ACTION)
+        public static final String ACTION_BLUETOOTH =
+                "android.settings.panel.action.BLUETOOTH";
     }
 
     /**

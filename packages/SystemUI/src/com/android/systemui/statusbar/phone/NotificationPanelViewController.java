@@ -34,9 +34,14 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.ActivityManager;
+import android.app.AlarmManager;
 import android.app.Fragment;
+import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.StatusBarManager;
 import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.content.res.Resources;
@@ -51,9 +56,11 @@ import android.graphics.Rect;
 import android.graphics.Region;
 import android.graphics.drawable.Drawable;
 import android.hardware.biometrics.BiometricSourceType;
+import android.hardware.fingerprint.FingerprintSensorPropertiesInternal;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.PowerManager;
+import android.os.UserHandle;
 import android.os.SystemClock;
 import android.os.UserManager;
 import android.os.VibrationEffect;
@@ -92,6 +99,7 @@ import com.android.keyguard.dagger.KeyguardStatusBarViewComponent;
 import com.android.keyguard.dagger.KeyguardStatusViewComponent;
 import com.android.keyguard.dagger.KeyguardUserSwitcherComponent;
 import com.android.systemui.DejankUtils;
+import com.android.systemui.Dependency;
 import com.android.systemui.R;
 import com.android.systemui.animation.ActivityLaunchAnimator;
 import com.android.systemui.animation.Interpolators;
@@ -108,6 +116,7 @@ import com.android.systemui.media.KeyguardMediaController;
 import com.android.systemui.media.MediaDataManager;
 import com.android.systemui.media.MediaHierarchyManager;
 import com.android.systemui.navigationbar.NavigationModeController;
+import com.android.systemui.omni.NotificationLightsView;
 import com.android.systemui.plugins.FalsingManager;
 import com.android.systemui.plugins.FalsingManager.FalsingTapListener;
 import com.android.systemui.plugins.qs.DetailAdapter;
@@ -170,6 +179,7 @@ import com.android.internal.util.syberia.SyberiaUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -184,6 +194,8 @@ import javax.inject.Provider;
 public class NotificationPanelViewController extends PanelViewController {
 
     private static final boolean DEBUG = false;
+    private static final boolean DEBUG_PULSE_LIGHT = false;
+
 
     /**
      * The parallax amount of the quick settings translation when dragging down the panel
@@ -239,7 +251,7 @@ public class NotificationPanelViewController extends PanelViewController {
     private final NotificationStackScrollLayoutController mNotificationStackScrollLayoutController;
     private final NotificationIconAreaController mNotificationIconAreaController;
 
-    // Cap and total height of Inter font. Needs to be adjusted when font for the big clock is
+    // Cap and total height of Roboto font. Needs to be adjusted when font for the big clock is
     // changed.
     private static final int CAP_HEIGHT = 2048;
     private static final int FONT_HEIGHT = 3072;
@@ -599,6 +611,12 @@ public class NotificationPanelViewController extends PanelViewController {
      */
     private boolean mDelayShowingKeyguardStatusBar;
 
+    private NotificationLightsView mPulseLightsView;
+    private boolean mPulseLightHandled;
+    private boolean mAmbientPulseLightRunning;
+    private boolean mAmbientPulseRanOnce = false; // used only for repeats
+    public static final String CANCEL_NOTIFICATION_PULSE_ACTION = "cancel_notification_pulse";
+
     private boolean mAnimatingQS;
 
     /**
@@ -628,6 +646,8 @@ public class NotificationPanelViewController extends PanelViewController {
      */
     private float mKeyguardOnlyContentAlpha = 1.0f;
 
+    private float mUdfpsMaxYBurnInOffset;
+
     /**
      * Are we currently in gesture navigation
      */
@@ -642,11 +662,15 @@ public class NotificationPanelViewController extends PanelViewController {
     private int mQsClipBottom;
     private boolean mQsVisible;
     private final ContentResolver mContentResolver;
+    private float mMinFraction;
 
     private final Executor mUiExecutor;
     private final SecureSettings mSecureSettings;
 
     private KeyguardMediaController mKeyguardMediaController;
+
+    private NotificationStackScrollLayout mStackScrollLayout;
+    private KeyguardStatusView mKeyguardStatusView;
 
     private View.AccessibilityDelegate mAccessibilityDelegate = new View.AccessibilityDelegate() {
         @Override
@@ -869,13 +893,13 @@ public class NotificationPanelViewController extends PanelViewController {
         mKeyguardStatusBar = mView.findViewById(R.id.keyguard_header);
         mBigClockContainer = mView.findViewById(R.id.big_clock_container);
 
-        UserAvatarView userAvatarView = null;
+        FrameLayout userAvatarContainer = null;
         KeyguardUserSwitcherView keyguardUserSwitcherView = null;
 
         if (mKeyguardUserSwitcherEnabled && mUserManager.isUserSwitcherEnabled()) {
             if (mKeyguardQsUserSwitchEnabled) {
                 ViewStub stub = mView.findViewById(R.id.keyguard_qs_user_switch_stub);
-                userAvatarView = (UserAvatarView) stub.inflate();
+                userAvatarContainer = (FrameLayout) stub.inflate();
             } else {
                 ViewStub stub = mView.findViewById(R.id.keyguard_user_switcher_stub);
                 keyguardUserSwitcherView = (KeyguardUserSwitcherView) stub.inflate();
@@ -884,12 +908,13 @@ public class NotificationPanelViewController extends PanelViewController {
 
         updateViewControllers(
                 mView.findViewById(R.id.keyguard_status_view),
-                userAvatarView,
+                userAvatarContainer,
                 mKeyguardStatusBar,
                 keyguardUserSwitcherView);
         mNotificationContainerParent = mView.findViewById(R.id.notification_container_parent);
         NotificationStackScrollLayout stackScrollLayout = mView.findViewById(
                 R.id.notification_stack_scroller);
+        mStackScrollLayout = stackScrollLayout;
         mNotificationStackScrollLayoutController.attach(stackScrollLayout);
         mNotificationStackScrollLayoutController.setOnHeightChangedListener(
                 mOnHeightChangedListener);
@@ -904,6 +929,7 @@ public class NotificationPanelViewController extends PanelViewController {
         mPreviewContainer = mView.findViewById(R.id.preview_container);
         mKeyguardBottomArea.setPreviewContainer(mPreviewContainer);
         mLastOrientation = mResources.getConfiguration().orientation;
+        mPulseLightsView = mView.findViewById(R.id.lights_container);
 
         initBottomArea();
 
@@ -973,12 +999,13 @@ public class NotificationPanelViewController extends PanelViewController {
         mScreenCornerRadius = (int) ScreenDecorationsUtils.getWindowCornerRadius(mResources);
         mLockscreenNotificationQSPadding = mResources.getDimensionPixelSize(
                 R.dimen.notification_side_paddings);
+        mUdfpsMaxYBurnInOffset = mResources.getDimensionPixelSize(R.dimen.udfps_burn_in_offset_y);
         mStatusBarHeaderHeight = mResources.getDimensionPixelSize(
                 R.dimen.status_bar_height);
     }
 
     private void updateViewControllers(KeyguardStatusView keyguardStatusView,
-            UserAvatarView userAvatarView,
+            FrameLayout userAvatarView,
             KeyguardStatusBarView keyguardStatusBarView,
             KeyguardUserSwitcherView keyguardUserSwitcherView) {
         // Re-associate the KeyguardStatusViewController
@@ -1115,6 +1142,7 @@ public class NotificationPanelViewController extends PanelViewController {
         mNotificationContainerParent.removeView(keyguardStatusView);
         keyguardStatusView = (KeyguardStatusView) mLayoutInflater.inflate(
                 R.layout.keyguard_status_view, mNotificationContainerParent, false);
+        mKeyguardStatusView = keyguardStatusView;
         mNotificationContainerParent.addView(keyguardStatusView, statusIndex);
         attachSplitShadeMediaPlayerContainer(
                 keyguardStatusView.findViewById(R.id.status_view_media_container));
@@ -1130,7 +1158,7 @@ public class NotificationPanelViewController extends PanelViewController {
                 !mKeyguardQsUserSwitchEnabled
                         && mKeyguardUserSwitcherEnabled
                         && isUserSwitcherEnabled;
-        UserAvatarView userAvatarView = (UserAvatarView) reInflateStub(
+        FrameLayout userAvatarView = (FrameLayout) reInflateStub(
                 R.id.keyguard_qs_user_switch_view /* viewId */,
                 R.id.keyguard_qs_user_switch_stub /* stubId */,
                 R.layout.keyguard_qs_user_switch /* layoutId */,
@@ -1319,7 +1347,16 @@ public class NotificationPanelViewController extends PanelViewController {
         float darkamount =
                 mUnlockedScreenOffAnimationController.isScreenOffAnimationPlaying()
                         ? 1.0f : mInterpolatedDarkAmount;
-        mClockPositionAlgorithm.setup(mStatusBarHeaderHeightKeyguard,
+
+        float udfpsAodTopLocation = -1f;
+        if (mUpdateMonitor.isUdfpsEnrolled() && mAuthController.getUdfpsProps().size() > 0) {
+            FingerprintSensorPropertiesInternal props = mAuthController.getUdfpsProps().get(0);
+            udfpsAodTopLocation = props.sensorLocationY - props.sensorRadius
+                    - mUdfpsMaxYBurnInOffset;
+        }
+
+        mClockPositionAlgorithm.setup(
+                mStatusBarHeaderHeightKeyguard,
                 totalHeight - bottomPadding,
                 mNotificationStackScrollLayoutController.getIntrinsicContentHeight(),
                 expandedFraction,
@@ -1331,7 +1368,10 @@ public class NotificationPanelViewController extends PanelViewController {
                 bypassEnabled, getUnlockedStackScrollerPadding(),
                 computeQsExpansionFraction(),
                 mDisplayTopInset,
-                mShouldUseSplitNotificationShade);
+                mShouldUseSplitNotificationShade,
+                udfpsAodTopLocation,
+                mKeyguardStatusViewController.getClockBottom(mStatusBarHeaderHeightKeyguard),
+                mKeyguardStatusViewController.isClockTopAligned());
         mClockPositionAlgorithm.run(mClockPositionResult);
         boolean animate = mNotificationStackScrollLayoutController.isAddOrRemoveAnimationPending();
         boolean animateClock = animate || mAnimateNextPositionUpdate;
@@ -1812,6 +1852,15 @@ public class NotificationPanelViewController extends PanelViewController {
             return mFalsingManager.isFalseTouch(interactionType);
         }
         return !mQsTouchAboveFalsingThreshold;
+    }
+
+    /**
+     * Percentage of panel expansion offset, caused by pulling down on a heads-up.
+     */
+    @Override
+    public void setMinFraction(float minFraction) {
+        mMinFraction = minFraction;
+        mDepthController.setPanelPullDownMinFraction(mMinFraction);
     }
 
     private float computeQsExpansionFraction() {
@@ -2328,6 +2377,12 @@ public class NotificationPanelViewController extends PanelViewController {
                 }
             }
             top += mOverStretchAmount;
+            // Correction for instant expansion caused by HUN pull down/
+            if (mMinFraction > 0f && mMinFraction < 1f) {
+                float realFraction =
+                        (getExpandedFraction() - mMinFraction) / (1f - mMinFraction);
+                top *= MathUtils.saturate(realFraction / mMinFraction);
+            }
             bottom = getView().getBottom();
             // notification bounds should take full screen width regardless of insets
             left = 0;
@@ -3311,9 +3366,9 @@ public class NotificationPanelViewController extends PanelViewController {
     }
 
     private void updateKeyguardStatusBarForHeadsUp() {
-        boolean
-                showingKeyguardHeadsUp =
-                mKeyguardShowing && mHeadsUpAppearanceController.shouldBeVisible();
+        boolean showingKeyguardHeadsUp = mKeyguardShowing
+                && mHeadsUpAppearanceController != null
+                && mHeadsUpAppearanceController.shouldBeVisible();
         if (mShowingKeyguardHeadsUp != showingKeyguardHeadsUp) {
             mShowingKeyguardHeadsUp = showingKeyguardHeadsUp;
             if (mKeyguardShowing) {
@@ -3458,7 +3513,7 @@ public class NotificationPanelViewController extends PanelViewController {
     }
 
     public void setPanelScrimMinFraction(float minFraction) {
-        mBar.panelScrimMinFractionChanged(minFraction);
+        mBar.onPanelMinFractionChanged(minFraction);
     }
 
     public void clearNotificationEffects() {
@@ -3648,6 +3703,30 @@ public class NotificationPanelViewController extends PanelViewController {
 
         final float dozeAmount = dozing ? 1 : 0;
         mStatusBarStateController.setAndInstrumentDozeAmount(mView, dozeAmount, animate);
+        if (mPulseLightsView != null) {
+            updatePulseLightState(dozing);
+        }
+    }
+
+    private void updatePulseLightState(boolean dozing) {
+        boolean mAmbientLights = Settings.System.getIntForUser(
+                mView.getContext().getContentResolver(), Settings.System.AOD_NOTIFICATION_PULSE,
+                0, UserHandle.USER_CURRENT) != 0;
+        if (mAmbientLights) {
+            if (DEBUG_PULSE_LIGHT) {
+                Log.d(TAG, "updatePulseLightState dozing = " + dozing + " mAmbientLights = "  + mAmbientLights);
+            }
+            if (dozing) {
+                // TODO on screen off should we restart pulse?
+                // if that should work we need to decide at this point
+                // if the current notifications "would" turn the screen on
+                // just checking hasActiveClearableNotifications is obviusly not
+                // enough here - so for now dont even try to do it
+            } else {
+                // screen on!
+                stopNotificationPulse();
+            }
+        }
     }
 
     public void setPulsing(boolean pulsing) {
@@ -3655,6 +3734,26 @@ public class NotificationPanelViewController extends PanelViewController {
         final boolean
                 animatePulse =
                 !mDozeParameters.getDisplayNeedsBlanking() && mDozeParameters.getAlwaysOn();
+        ContentResolver resolver = mView.getContext().getContentResolver();
+        boolean pulseLights = Settings.System.getIntForUser(resolver,
+                Settings.System.NOTIFICATION_PULSE, 0, UserHandle.USER_CURRENT) != 0;
+        boolean ambientLights = Settings.System.getIntForUser(resolver,
+                Settings.System.AOD_NOTIFICATION_PULSE, 0, UserHandle.USER_CURRENT) != 0;
+        boolean aodEnabled = Settings.Secure.getIntForUser(resolver,
+                Settings.Secure.DOZE_ALWAYS_ON, 0, UserHandle.USER_CURRENT) == 1;
+        ExpandableNotificationRow row = mStackScrollLayout.getFirstActiveClearableNotifications(ROWS_ALL);
+        boolean activeNotif = row != null;
+        int pulseReason = Settings.System.getIntForUser(resolver,
+                Settings.System.PULSE_TRIGGER_REASON, DozeLog.PULSE_REASON_NONE, UserHandle.USER_CURRENT);
+        boolean pulseReasonNotification = pulseReason == DozeLog.PULSE_REASON_NOTIFICATION;
+        boolean ambientLightsHideAod = Settings.System.getIntForUser(resolver,
+                Settings.System.AOD_NOTIFICATION_PULSE_CLEAR, 0, UserHandle.USER_CURRENT) != 0;
+        int ambientLightsTimeout = Settings.System.getIntForUser(resolver,
+                Settings.System.AOD_NOTIFICATION_PULSE_TIMEOUT, 0, UserHandle.USER_CURRENT);
+        boolean pulseColorAutomatic = Settings.System.getIntForUser(resolver,
+                Settings.System.NOTIFICATION_PULSE_COLOR_MODE, 0, UserHandle.USER_CURRENT) == 2;
+        int repeats = Settings.System.getIntForUser(resolver,
+                Settings.System.NOTIFICATION_PULSE_REPEATS, 0, UserHandle.USER_CURRENT);
         if (animatePulse) {
             mAnimateNextPositionUpdate = true;
         }
@@ -3663,7 +3762,86 @@ public class NotificationPanelViewController extends PanelViewController {
         if (!mPulsing && !mDozing) {
             mAnimateNextPositionUpdate = false;
         }
+        if (mPulseLightsView != null && pulseLights) {
+            if (DEBUG_PULSE_LIGHT) {
+                Log.d(TAG, "setPulsing pulsing = " + pulsing + " pulseLights = " + pulseLights
+                        + " ambientLights = " + ambientLights + " activeNotif = " + activeNotif
+                        + " mPulseLightHandled = " + mPulseLightHandled + " mDozing = " + mDozing
+                        + " pulseReason = " + pulseReason + " ambientLightsTimeout = " + ambientLightsTimeout);
+            }
+            int pulseColor = mPulseLightsView.getNotificationLightsColor();
+            if (activeNotif) {
+                if (DEBUG_PULSE_LIGHT) {
+                    Log.d(TAG, "setPulsing notification = " + row.getNotificationColor());
+                }
+                if (pulseColorAutomatic) {
+                    int notificationColor = row.getNotificationColor();
+                    if (notificationColor != Notification.COLOR_DEFAULT) {
+                        pulseColor = notificationColor;
+                    }
+                } else {
+                    pulseColor = mPulseLightsView.getNotificationLightsColor();
+                }
+            }
+            if (mPulsing) {
+                if (pulseReasonNotification) {
+                    if (activeNotif) {
+                        // show the bars if we have to
+                        if (pulseLights) {
+                            mPulseLightsView.animateNotificationWithColor(pulseColor);
+                            mPulseLightsView.setVisibility(View.VISIBLE);
+                        } else if (!mAmbientPulseLightRunning) {
+                            // bars can still be visible as leftover
+                            // but we dont want them here
+                            mPulseLightsView.setVisibility(View.GONE);
+                        }
+                        if (ambientLights && aodEnabled) {
+                            mPulseLightHandled = false;
+                            // tell power manager that we want to enable aod
+                            // must do that here already not on pulsing = false
+                            Settings.System.putIntForUser(mView.getContext().getContentResolver(),
+                                    Settings.System.AOD_NOTIFICATION_PULSE_TRIGGER, 1,
+                                    UserHandle.USER_CURRENT);
+                        }
+                    }
+                } else {
+                    showAodContent(true);
+                }
+            } else {
+                // continue to pulse - if not screen was turned on in the meantime
+                if (activeNotif && ambientLights && aodEnabled && mDozing && !mPulseLightHandled) {
+                    // no-op if pulseLights is also enabled
+                    if (ambientLightsHideAod) {
+                        showAodContent(false);
+                    }
+                    mPulseLightsView.animateNotificationWithColor(pulseColor);
+                    mPulseLightsView.setVisibility(View.VISIBLE);
+                    mAmbientPulseLightRunning = true;
+                    if (ambientLightsTimeout != 0 && repeats == 0) {
+                        // start the end timer
+                        startNotificationPulseTimer(ambientLightsTimeout);
+                    } else if (repeats != 0 && !mAmbientPulseRanOnce) {
+                        mAmbientPulseRanOnce = true;
+                    } else if (repeats != 0 && mAmbientPulseRanOnce) {
+                        // stop if using repeats and already ran once
+                        stopNotificationPulse();
+                    }
+                } else {
+                    // no active notifications or just pulse without aod - so no reason to continue
+                    stopNotificationPulse();
+                }
+            }
+        }
         mNotificationStackScrollLayoutController.setPulsing(pulsing, animatePulse);
+    }
+
+    private void showAodContent(boolean show) {
+        if (DEBUG_PULSE_LIGHT) {
+            Log.d(TAG, "showAodContent show = " + show);
+        }
+        mKeyguardStatusView.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+        mKeyguardStatusBar.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+        mKeyguardBottomArea.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
     }
 
     public void setAmbientIndicationBottomPadding(int ambientIndicationBottomPadding) {
@@ -3952,6 +4130,14 @@ public class NotificationPanelViewController extends PanelViewController {
                     return false;
                 }
 
+                if (((mIsLockscreenDoubleTapEnabled
+                    && mBarState == StatusBarState.KEYGUARD) ||
+                    (!mQsExpanded && mDoubleTapToSleepEnabled
+                    && event.getY() < mStatusBarHeaderHeightKeyguard))
+                        && !mPulsing && !mDozing) {
+                    mDoubleTapToSleepGesture.onTouchEvent(event);
+                }
+
                 // Make sure the next touch won't the blocked after the current ends.
                 if (event.getAction() == MotionEvent.ACTION_UP
                         || event.getAction() == MotionEvent.ACTION_CANCEL) {
@@ -3963,14 +4149,6 @@ public class NotificationPanelViewController extends PanelViewController {
                 if (mLastEventSynthesizedDown && event.getAction() == MotionEvent.ACTION_UP) {
                     expand(true /* animate */);
                 }
-
-                if ((mIsLockscreenDoubleTapEnabled && !mPulsing && !mDozing
-                        && mBarState == StatusBarState.KEYGUARD) ||
-                        (!mQsExpanded && mDoubleTapToSleepEnabled
-                        && event.getY() < mStatusBarHeaderHeight)) {
-                    mDoubleTapToSleepGesture.onTouchEvent(event);
-                }
-
                 initDownStates(event);
 
                 // If pulse is expanding already, let's give it the touch. There are situations
@@ -4692,5 +4870,79 @@ public class NotificationPanelViewController extends PanelViewController {
             updateMaxHeadsUpTranslation();
             return insets;
         }
+    }
+
+    public void stopNotificationPulse() {
+        if (DEBUG_PULSE_LIGHT) {
+            Log.d(TAG, "stopNotificationPulse mAmbientPulseLightRunning = "
+                    + mAmbientPulseLightRunning);
+        }
+        mPulseLightsView.setVisibility(View.GONE);
+        mPulseLightsView.stopAnimateNotification();
+        Settings.System.putIntForUser(mView.getContext().getContentResolver(),
+                Settings.System.AOD_NOTIFICATION_PULSE_TRIGGER, 0,
+                UserHandle.USER_CURRENT);
+        boolean doShowAodContent = true;
+        if (mAmbientPulseLightRunning) {
+            mAmbientPulseLightRunning = false;
+            mAmbientPulseRanOnce = false;
+            mPulseLightHandled = true;
+            stopNotificationPulseTimer();
+            // only do it if we continue to doze but never when we already woke up
+            if (mDozing) {
+                DozeParameters dozeParameters = Dependency.get(DozeParameters.class);
+                if (DEBUG_PULSE_LIGHT) {
+                    Log.d(TAG, "stopNotificationPulse getAlwaysOnAfterAmbientLight() = "
+                            + dozeParameters.getAlwaysOnAfterAmbientLight());
+                }
+                // do we need to stop aod (doze)
+                if (!dozeParameters.getAlwaysOnAfterAmbientLight()) {
+                    if (DEBUG_PULSE_LIGHT) {
+                        Log.d(TAG, "stopNotificationPulse disable aod");
+                    }
+                    doShowAodContent = false;
+                    // we want that in one step to prevent flicker - usage of GO_TO_SLEEP_FLAG_FORCE
+                    // since this will end doze we will enter setDozing(false) which
+                    // will basically call this again
+                    mPowerManager.goToSleep(SystemClock.uptimeMillis(),
+                            PowerManager.GO_TO_SLEEP_REASON_APPLICATION,
+                            PowerManager.GO_TO_SLEEP_FLAG_NO_DOZE|PowerManager.GO_TO_SLEEP_FLAG_FORCE);
+                }
+            }
+        }
+        if (doShowAodContent) {
+            if (mBarState == StatusBarState.KEYGUARD
+                    || mBarState == StatusBarState.SHADE_LOCKED) {
+                showAodContent(true);
+            }
+        }
+    }
+
+    private void startNotificationPulseTimer(long timeoutInSecs) {
+        // just to be sure
+        stopNotificationPulseTimer();
+
+        AlarmManager alarmManager = (AlarmManager) mView.getContext().getSystemService(Context.ALARM_SERVICE);
+        long when = System.currentTimeMillis() + timeoutInSecs * 1000;
+        if (DEBUG_PULSE_LIGHT) {
+            SimpleDateFormat formatTime = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+            Log.d(TAG, "startNotificationPulseTimer until = " + formatTime.format(when));
+        }
+        Intent intent = new Intent(CANCEL_NOTIFICATION_PULSE_ACTION);
+        intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        PendingIntent sender = PendingIntent.getBroadcast(mView.getContext(),
+                0, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, when, sender);
+    }
+
+    private void stopNotificationPulseTimer() {
+        if (DEBUG_PULSE_LIGHT) {
+            Log.d(TAG, "stopNotificationPulseTimer");
+        }
+        AlarmManager alarmManager = (AlarmManager) mView.getContext().getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(CANCEL_NOTIFICATION_PULSE_ACTION);
+        PendingIntent sender = PendingIntent.getBroadcast(mView.getContext(),
+                0, intent, PendingIntent.FLAG_CANCEL_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        alarmManager.cancel(sender);
     }
 }

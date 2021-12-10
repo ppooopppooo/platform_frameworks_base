@@ -501,6 +501,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     int mLidNavigationAccessibility;
     int mShortPressOnPowerBehavior;
     int mLongPressOnPowerBehavior;
+    long mLongPressOnPowerAssistantTimeoutMs;
     int mVeryLongPressOnPowerBehavior;
     int mDoublePressOnPowerBehavior;
     int mTriplePressOnPowerBehavior;
@@ -610,6 +611,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private boolean mVolumeMusicControlActive;
     private boolean mVolumeMusicControl;
     private boolean mVolumeWakeActive;
+    private boolean mGlobalActionsOnLockDisable;
 
     // Fallback actions by key code.
     private final SparseArray<KeyCharacterMap.FallbackAction> mFallbackActions =
@@ -809,6 +811,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Settings.Global.POWER_BUTTON_LONG_PRESS), false, this,
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.Global.getUriFor(
+                    Settings.Global.POWER_BUTTON_LONG_PRESS_DURATION_MS), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.Global.getUriFor(
                     Settings.Global.POWER_BUTTON_VERY_LONG_PRESS), false, this,
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.Global.getUriFor(
@@ -828,6 +833,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     UserHandle.USER_ALL);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.VOLUME_BUTTON_MUSIC_CONTROL), false, this,
+                    UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.LOCK_POWER_MENU_DISABLED), false, this,
                     UserHandle.USER_ALL);
             updateSettings();
         }
@@ -1402,10 +1410,14 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     }
 
     void showGlobalActionsInternal() {
+        final boolean keyguardShowing = isKeyguardShowingAndNotOccluded();
+        if (keyguardShowing && isKeyguardSecure(mCurrentUserId) &&
+                mGlobalActionsOnLockDisable) {
+            return;
+        }
         if (mGlobalActions == null) {
             mGlobalActions = new GlobalActions(mContext, mWindowManagerFuncs);
         }
-        final boolean keyguardShowing = isKeyguardShowingAndNotOccluded();
         mGlobalActions.showDialog(keyguardShowing, isDeviceProvisioned());
         // since it took two seconds of long press to bring this up,
         // poke the wake lock so they have some time to see the dialog.
@@ -1855,6 +1867,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 com.android.internal.R.integer.config_shortPressOnPowerBehavior);
         mLongPressOnPowerBehavior = mContext.getResources().getInteger(
                 com.android.internal.R.integer.config_longPressOnPowerBehavior);
+        mLongPressOnPowerAssistantTimeoutMs = mContext.getResources().getInteger(
+                com.android.internal.R.integer.config_longPressOnPowerDurationMs);
         mVeryLongPressOnPowerBehavior = mContext.getResources().getInteger(
                 com.android.internal.R.integer.config_veryLongPressOnPowerBehavior);
         mDoublePressOnPowerBehavior = mContext.getResources().getInteger(
@@ -2102,7 +2116,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
      */
     private final class PowerKeyRule extends SingleKeyGestureDetector.SingleKeyRule {
         PowerKeyRule(int gestures) {
-            super(KEYCODE_POWER, gestures);
+            super(mContext, KEYCODE_POWER, gestures);
         }
 
         @Override
@@ -2114,6 +2128,15 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         void onPress(long downTime) {
             powerPress(downTime, 1 /*count*/,
                     mSingleKeyGestureDetector.beganFromNonInteractive());
+        }
+
+        @Override
+        long getLongPressTimeoutMs() {
+            if (getResolvedLongPressOnPowerBehavior() == LONG_PRESS_POWER_ASSISTANT) {
+                return mLongPressOnPowerAssistantTimeoutMs;
+            } else {
+                return super.getLongPressTimeoutMs();
+            }
         }
 
         @Override
@@ -2175,7 +2198,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
      */
     private final class BackKeyRule extends SingleKeyGestureDetector.SingleKeyRule {
         BackKeyRule(int gestures) {
-            super(KEYCODE_BACK, gestures);
+            super(mContext, KEYCODE_BACK, gestures);
         }
 
         @Override
@@ -2313,6 +2336,11 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Settings.Global.POWER_BUTTON_LONG_PRESS,
                     mContext.getResources().getInteger(
                             com.android.internal.R.integer.config_longPressOnPowerBehavior));
+            mLongPressOnPowerAssistantTimeoutMs = Settings.Global.getLong(
+                    mContext.getContentResolver(),
+                    Settings.Global.POWER_BUTTON_LONG_PRESS_DURATION_MS,
+                    mContext.getResources().getInteger(
+                            com.android.internal.R.integer.config_longPressOnPowerDurationMs));
             mVeryLongPressOnPowerBehavior = Settings.Global.getInt(resolver,
                     Settings.Global.POWER_BUTTON_VERY_LONG_PRESS,
                     mContext.getResources().getInteger(
@@ -2327,6 +2355,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mVolumeMusicControl = Settings.System.getIntForUser(resolver,
                     Settings.System.VOLUME_BUTTON_MUSIC_CONTROL,
                             0, UserHandle.USER_CURRENT) != 0;
+            mGlobalActionsOnLockDisable = Settings.System.getIntForUser(resolver,
+                    Settings.System.LOCK_POWER_MENU_DISABLED, 1,
+                    UserHandle.USER_CURRENT) != 0;
         }
         if (updateRotation) {
             updateRotation(true);
@@ -5800,6 +5831,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         pw.print(prefix);
                 pw.print("mLongPressOnPowerBehavior=");
                 pw.println(longPressOnPowerBehaviorToString(mLongPressOnPowerBehavior));
+        pw.print(prefix);
+        pw.print("mLongPressOnPowerAssistantTimeoutMs=");
+        pw.println(mLongPressOnPowerAssistantTimeoutMs);
         pw.print(prefix);
                 pw.print("mVeryLongPressOnPowerBehavior=");
                 pw.println(veryLongPressOnPowerBehaviorToString(mVeryLongPressOnPowerBehavior));

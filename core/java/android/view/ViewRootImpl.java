@@ -8465,13 +8465,13 @@ public final class ViewRootImpl implements ViewParent,
             MotionEvent me = (MotionEvent) event;
             if (me.getAction() == MotionEvent.ACTION_CANCEL) {
                 EventLog.writeEvent(EventLogTags.VIEW_ENQUEUE_INPUT_EVENT, "Motion - Cancel",
-                        getTitle());
+                        getTitle().toString());
             }
         } else if (event instanceof KeyEvent) {
             KeyEvent ke = (KeyEvent) event;
             if (ke.isCanceled()) {
                 EventLog.writeEvent(EventLogTags.VIEW_ENQUEUE_INPUT_EVENT, "Key - Cancel",
-                        getTitle());
+                        getTitle().toString());
             }
         }
         // Always enqueue the input event in order, regardless of its time stamp.
@@ -9510,6 +9510,7 @@ public final class ViewRootImpl implements ViewParent,
 
         ScrollCaptureResponse.Builder response = new ScrollCaptureResponse.Builder();
         response.setWindowTitle(getTitle().toString());
+        response.setPackageName(mContext.getPackageName());
 
         StringWriter writer =  new StringWriter();
         IndentingPrintWriter pw = new IndentingPrintWriter(writer);
@@ -9924,7 +9925,9 @@ public final class ViewRootImpl implements ViewParent,
         if (!mUseMTRenderer) {
             return;
         }
-        mWindowDrawCountDown = new CountDownLatch(mWindowCallbacks.size());
+        if (mReportNextDraw) {
+            mWindowDrawCountDown = new CountDownLatch(mWindowCallbacks.size());
+        }
         for (int i = mWindowCallbacks.size() - 1; i >= 0; i--) {
             mWindowCallbacks.get(i).onRequestDraw(mReportNextDraw);
         }

@@ -18,14 +18,11 @@ package com.android.systemui.qs;
 
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertTrue;
-import static junit.framework.TestCase.assertFalse;
 
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -63,17 +60,16 @@ import com.android.systemui.qs.logging.QSLogger;
 import com.android.systemui.qs.tileimpl.QSTileImpl;
 import com.android.systemui.settings.UserTracker;
 import com.android.systemui.shared.plugins.PluginManager;
-import com.android.systemui.statusbar.FeatureFlags;
 import com.android.systemui.statusbar.phone.AutoTileManager;
 import com.android.systemui.statusbar.phone.StatusBar;
 import com.android.systemui.statusbar.phone.StatusBarIconController;
 import com.android.systemui.tuner.TunerService;
+import com.android.systemui.util.settings.FakeSettings;
 import com.android.systemui.util.settings.SecureSettings;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -121,12 +117,9 @@ public class QSTileHostTest extends SysuiTestCase {
     private UiEventLogger mUiEventLogger;
     @Mock
     private UserTracker mUserTracker;
-    @Mock
     private SecureSettings mSecureSettings;
     @Mock
     private CustomTileStatePersister mCustomTileStatePersister;
-    @Mock
-    private FeatureFlags mFeatureFlags;
 
     private Handler mHandler;
     private TestableLooper mLooper;
@@ -137,14 +130,15 @@ public class QSTileHostTest extends SysuiTestCase {
         MockitoAnnotations.initMocks(this);
         mLooper = TestableLooper.get(this);
         mHandler = new Handler(mLooper.getLooper());
+
+        mSecureSettings = new FakeSettings();
+        mSecureSettings.putStringForUser(
+                QSTileHost.TILES_SETTING, "", "", false, mUserTracker.getUserId(), false);
         mQSTileHost = new TestQSTileHost(mContext, mIconController, mDefaultFactory, mHandler,
                 mLooper.getLooper(), mPluginManager, mTunerService, mAutoTiles, mDumpManager,
                 mBroadcastDispatcher, mStatusBar, mQSLogger, mUiEventLogger, mUserTracker,
-                mSecureSettings, mCustomTileStatePersister, mFeatureFlags);
+                mSecureSettings, mCustomTileStatePersister);
         setUpTileFactory();
-        when(mFeatureFlags.isProviderModelSettingEnabled()).thenReturn(false);
-        when(mSecureSettings.getStringForUser(eq(QSTileHost.TILES_SETTING), anyInt()))
-                .thenReturn("");
     }
 
     private void setUpTileFactory() {
@@ -172,13 +166,13 @@ public class QSTileHostTest extends SysuiTestCase {
 
     @Test
     public void testLoadTileSpecs_emptySetting() {
-        List<String> tiles = QSTileHost.loadTileSpecs(mContext, "", mFeatureFlags);
+        List<String> tiles = QSTileHost.loadTileSpecs(mContext, "");
         assertFalse(tiles.isEmpty());
     }
 
     @Test
     public void testLoadTileSpecs_nullSetting() {
-        List<String> tiles = QSTileHost.loadTileSpecs(mContext, null, mFeatureFlags);
+        List<String> tiles = QSTileHost.loadTileSpecs(mContext, null);
         assertFalse(tiles.isEmpty());
     }
 
@@ -189,55 +183,6 @@ public class QSTileHostTest extends SysuiTestCase {
         mQSTileHost.onTuningChanged(QSTileHost.TILES_SETTING, "not-valid");
 
         assertEquals(2, mQSTileHost.getTiles().size());
-    }
-
-    @Test
-    public void testRemoveWifiAndCellularWithoutInternet() {
-        when(mFeatureFlags.isProviderModelSettingEnabled()).thenReturn(true);
-        mQSTileHost.onTuningChanged(QSTileHost.TILES_SETTING, "wifi, spec1, cell, spec2");
-
-        assertEquals("internet", mQSTileHost.mTileSpecs.get(0));
-        assertEquals("spec1", mQSTileHost.mTileSpecs.get(1));
-        assertEquals("spec2", mQSTileHost.mTileSpecs.get(2));
-    }
-
-    @Test
-    public void testRemoveWifiAndCellularWithInternet() {
-        when(mFeatureFlags.isProviderModelSettingEnabled()).thenReturn(true);
-        mQSTileHost.onTuningChanged(QSTileHost.TILES_SETTING, "wifi, spec1, cell, spec2, internet");
-
-        assertEquals("spec1", mQSTileHost.mTileSpecs.get(0));
-        assertEquals("spec2", mQSTileHost.mTileSpecs.get(1));
-        assertEquals("internet", mQSTileHost.mTileSpecs.get(2));
-    }
-
-    @Test
-    public void testRemoveWifiWithoutInternet() {
-        when(mFeatureFlags.isProviderModelSettingEnabled()).thenReturn(true);
-        mQSTileHost.onTuningChanged(QSTileHost.TILES_SETTING, "spec1, wifi, spec2");
-
-        assertEquals("spec1", mQSTileHost.mTileSpecs.get(0));
-        assertEquals("internet", mQSTileHost.mTileSpecs.get(1));
-        assertEquals("spec2", mQSTileHost.mTileSpecs.get(2));
-    }
-
-    @Test
-    public void testRemoveCellWithInternet() {
-        when(mFeatureFlags.isProviderModelSettingEnabled()).thenReturn(true);
-        mQSTileHost.onTuningChanged(QSTileHost.TILES_SETTING, "spec1, spec2, cell, internet");
-
-        assertEquals("spec1", mQSTileHost.mTileSpecs.get(0));
-        assertEquals("spec2", mQSTileHost.mTileSpecs.get(1));
-        assertEquals("internet", mQSTileHost.mTileSpecs.get(2));
-    }
-
-    @Test
-    public void testNoWifiNoCellularNoInternet() {
-        when(mFeatureFlags.isProviderModelSettingEnabled()).thenReturn(true);
-        mQSTileHost.onTuningChanged(QSTileHost.TILES_SETTING, "spec1,spec2");
-
-        assertEquals("spec1", mQSTileHost.mTileSpecs.get(0));
-        assertEquals("spec2", mQSTileHost.mTileSpecs.get(1));
     }
 
     @Test
@@ -373,7 +318,7 @@ public class QSTileHostTest extends SysuiTestCase {
 
     @Test
     public void testLoadTileSpec_repeated() {
-        List<String> specs = QSTileHost.loadTileSpecs(mContext, "spec1,spec1,spec2", mFeatureFlags);
+        List<String> specs = QSTileHost.loadTileSpecs(mContext, "spec1,spec1,spec2");
 
         assertEquals(2, specs.size());
         assertEquals("spec1", specs.get(0));
@@ -384,7 +329,7 @@ public class QSTileHostTest extends SysuiTestCase {
     public void testLoadTileSpec_repeatedInDefault() {
         mContext.getOrCreateTestableResources()
                 .addOverride(R.string.quick_settings_tiles_default, "spec1,spec1");
-        List<String> specs = QSTileHost.loadTileSpecs(mContext, "default", mFeatureFlags);
+        List<String> specs = QSTileHost.loadTileSpecs(mContext, "default");
 
         // Remove spurious tiles, like dbg:mem
         specs.removeIf(spec -> !"spec1".equals(spec));
@@ -395,7 +340,7 @@ public class QSTileHostTest extends SysuiTestCase {
     public void testLoadTileSpec_repeatedDefaultAndSetting() {
         mContext.getOrCreateTestableResources()
                 .addOverride(R.string.quick_settings_tiles_default, "spec1");
-        List<String> specs = QSTileHost.loadTileSpecs(mContext, "default,spec1", mFeatureFlags);
+        List<String> specs = QSTileHost.loadTileSpecs(mContext, "default,spec1");
 
         // Remove spurious tiles, like dbg:mem
         specs.removeIf(spec -> !"spec1".equals(spec));
@@ -416,6 +361,16 @@ public class QSTileHostTest extends SysuiTestCase {
                 .removeState(new TileServiceKey(CUSTOM_TILE, mQSTileHost.getUserId()));
     }
 
+    @Test
+    public void testRemoveTiles() {
+        List<String> tiles = List.of("spec1", "spec2", "spec3");
+        mQSTileHost.saveTilesToSettings(tiles);
+
+        mQSTileHost.removeTiles(List.of("spec1", "spec2"));
+
+        assertEquals(List.of("spec3"), mQSTileHost.mTileSpecs);
+    }
+
     private class TestQSTileHost extends QSTileHost {
         TestQSTileHost(Context context, StatusBarIconController iconController,
                 QSFactory defaultFactory, Handler mainHandler, Looper bgLooper,
@@ -423,12 +378,11 @@ public class QSTileHostTest extends SysuiTestCase {
                 Provider<AutoTileManager> autoTiles, DumpManager dumpManager,
                 BroadcastDispatcher broadcastDispatcher, StatusBar statusBar, QSLogger qsLogger,
                 UiEventLogger uiEventLogger, UserTracker userTracker,
-                SecureSettings secureSettings, CustomTileStatePersister customTileStatePersister,
-                FeatureFlags featureFlags) {
+                SecureSettings secureSettings, CustomTileStatePersister customTileStatePersister) {
             super(context, iconController, defaultFactory, mainHandler, bgLooper, pluginManager,
                     tunerService, autoTiles, dumpManager, broadcastDispatcher,
                     Optional.of(statusBar), qsLogger, uiEventLogger, userTracker, secureSettings,
-                    customTileStatePersister, featureFlags);
+                    customTileStatePersister);
         }
 
         @Override
@@ -442,14 +396,11 @@ public class QSTileHostTest extends SysuiTestCase {
         @Override
         void saveTilesToSettings(List<String> tileSpecs) {
             super.saveTilesToSettings(tileSpecs);
-
-            ArgumentCaptor<String> specs = ArgumentCaptor.forClass(String.class);
-            verify(mSecureSettings, atLeastOnce()).putStringForUser(eq(QSTileHost.TILES_SETTING),
-                    specs.capture(), isNull(), eq(false), anyInt(), eq(true));
-
             // After tiles are changed, make sure to call onTuningChanged with the new setting if it
             // changed
-            onTuningChanged(TILES_SETTING, specs.getValue());
+            String specs = mSecureSettings.getStringForUser(
+                    QSTileHost.TILES_SETTING, mUserTracker.getUserId());
+            onTuningChanged(TILES_SETTING, specs);
         }
     }
 

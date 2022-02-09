@@ -31,6 +31,7 @@ import android.annotation.Nullable;
 import android.annotation.StringRes;
 import android.annotation.UserIdInt;
 import android.annotation.XmlRes;
+import android.app.compat.gms.GmsCompat;
 import android.app.role.RoleManager;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
@@ -120,6 +121,8 @@ import android.util.Log;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.Immutable;
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.gmscompat.GmsHooks;
+import com.android.internal.gmscompat.PlayStoreHooks;
 import com.android.internal.os.SomeArgs;
 import com.android.internal.util.UserIcons;
 
@@ -216,6 +219,8 @@ public class ApplicationPackageManager extends PackageManager {
     @Override
     public PackageInfo getPackageInfo(VersionedPackage versionedPackage, int flags)
             throws NameNotFoundException {
+        flags = GmsHooks.getPackageInfoFlags(flags);
+
         final int userId = getUserId();
         try {
             PackageInfo pi = mPM.getPackageInfoVersioned(versionedPackage,
@@ -232,6 +237,8 @@ public class ApplicationPackageManager extends PackageManager {
     @Override
     public PackageInfo getPackageInfoAsUser(String packageName, int flags, int userId)
             throws NameNotFoundException {
+        flags = GmsHooks.getPackageInfoFlags(flags);
+
         PackageInfo pi =
                 getPackageInfoAsUserCached(
                         packageName,
@@ -572,6 +579,10 @@ public class ApplicationPackageManager extends PackageManager {
     /** @hide */
     @Override
     public @NonNull List<SharedLibraryInfo> getSharedLibraries(int flags) {
+        if (GmsCompat.isEnabled()) {
+            // MATCH_ANY_USER requires privileged INTERACT_ACROSS_USERS permission
+            flags &= ~MATCH_ANY_USER;
+        }
         return getSharedLibrariesAsUser(flags, getUserId());
     }
 
@@ -1816,6 +1827,10 @@ public class ApplicationPackageManager extends PackageManager {
 
     @Override
     public void addOnPermissionsChangeListener(OnPermissionsChangedListener listener) {
+        if (GmsCompat.isEnabled()) {
+            return;
+        }
+
         getPermissionManager().addOnPermissionsChangeListener(listener);
     }
 
@@ -2511,6 +2526,10 @@ public class ApplicationPackageManager extends PackageManager {
     @Override
     @UnsupportedAppUsage
     public void deletePackage(String packageName, IPackageDeleteObserver observer, int flags) {
+        if (GmsCompat.isPlayStore()) {
+            PlayStoreHooks.deletePackage(mContext, this, packageName, observer, flags);
+            return;
+        }
         deletePackageAsUser(packageName, observer, flags, getUserId());
     }
 
@@ -2557,6 +2576,10 @@ public class ApplicationPackageManager extends PackageManager {
     @Override
     public void freeStorageAndNotify(String volumeUuid, long idealStorageSize,
             IPackageDataObserver observer) {
+        if (GmsCompat.isPlayStore()) {
+            PlayStoreHooks.freeStorageAndNotify(mContext, volumeUuid, idealStorageSize, observer);
+            return;
+        }
         try {
             mPM.freeStorageAndNotify(volumeUuid, idealStorageSize, 0, observer);
         } catch (RemoteException e) {

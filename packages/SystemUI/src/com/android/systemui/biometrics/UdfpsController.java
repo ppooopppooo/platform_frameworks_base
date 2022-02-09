@@ -29,6 +29,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.ContentObserver;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.RectF;
@@ -38,14 +39,17 @@ import android.hardware.fingerprint.FingerprintSensorPropertiesInternal;
 import android.hardware.fingerprint.IUdfpsOverlayController;
 import android.hardware.fingerprint.IUdfpsOverlayControllerCallback;
 import android.media.AudioAttributes;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.Trace;
+import android.os.UserHandle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -57,6 +61,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityManager;
 
 import com.android.internal.annotations.VisibleForTesting;
+import com.android.internal.util.syberia.SyberiaUtils;
 import com.android.keyguard.KeyguardUpdateMonitor;
 import com.android.systemui.R;
 import com.android.systemui.biometrics.UdfpsHbmTypes.HbmType;
@@ -77,6 +82,7 @@ import com.android.systemui.statusbar.policy.KeyguardStateController;
 import com.android.systemui.util.concurrency.DelayableExecutor;
 import com.android.systemui.util.concurrency.Execution;
 import com.android.systemui.util.time.SystemClock;
+import com.android.systemui.util.settings.SystemSettings;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -101,6 +107,7 @@ import kotlin.Unit;
 @SysUISingleton
 public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
     private static final String TAG = "UdfpsController";
+    private static final String PULSE_ACTION = "com.android.systemui.doze.pulse";
     private static final long AOD_INTERRUPT_TIMEOUT_MILLIS = 1000;
 
     // Minimum required delay between consecutive touch logs in milliseconds.
@@ -164,6 +171,10 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
     private boolean mAttemptedToDismissKeyguard;
     private final int mUdfpsVendorCode;
     private Set<Callback> mCallbacks = new HashSet<>();
+    private final SystemSettings mSystemSettings;
+    private boolean mScreenOffFod;
+
+    private UdfpsAnimation mUdfpsAnimation;
 
     @VisibleForTesting
     public static final AudioAttributes VIBRATION_SONIFICATION_ATTRIBUTES =
@@ -317,11 +328,18 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
         @Override
         public void onAcquired(int sensorId, int acquiredInfo, int vendorCode) {
             mFgExecutor.execute(() -> {
-                if (acquiredInfo == 6 && (mStatusBarStateController.isDozing() || !mScreenOn)) {
-                    if (vendorCode == mUdfpsVendorCode) {
-                        mPowerManager.wakeUp(mSystemClock.uptimeMillis(),
-                                PowerManager.WAKE_REASON_GESTURE, TAG);
-                        onAodInterrupt(0, 0, 0, 0); // To-Do pass proper values
+                final boolean isDozing = mStatusBarStateController.isDozing() || !mScreenOn;
+                if (acquiredInfo == 6 && vendorCode == mUdfpsVendorCode) {;
+                    if ((mScreenOffFod && isDozing) /** Screen off and dozing */ ||
+                            (mKeyguardUpdateMonitor.isDreaming() && mScreenOn) /** AOD or pulse */) {
+                        if (mContext.getResources().getBoolean(R.bool.config_pulseOnFingerDownInAod)) {
+                            mContext.sendBroadcastAsUser(new Intent(PULSE_ACTION),
+                                    new UserHandle(UserHandle.USER_CURRENT));
+                        } else {
+                            mPowerManager.wakeUp(mSystemClock.uptimeMillis(),
+                                    PowerManager.WAKE_REASON_GESTURE, TAG);
+                        }
+                        onAodInterrupt(0, 0, 0, 0);
                     }
                 }
             });
@@ -554,6 +572,7 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
             @Main Handler mainHandler,
             @NonNull ConfigurationController configurationController,
             @NonNull SystemClock systemClock,
+            @NonNull SystemSettings systemSettings,
             @NonNull UnlockedScreenOffAnimationController unlockedScreenOffAnimationController) {
         mContext = context;
         mExecution = execution;
@@ -616,7 +635,25 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
         udfpsHapticsSimulator.setUdfpsController(this);
 
         mUdfpsVendorCode = mContext.getResources().getInteger(R.integer.config_udfps_vendor_code);
+        if (SyberiaUtils.isPackageInstalled(mContext, "com.syberia.udfps.resources")) {
+            mUdfpsAnimation = new UdfpsAnimation(mContext, mWindowManager, mSensorProps);
+        }
+        mSystemSettings = systemSettings;
+        updateScreenOffFodState();
+        mSystemSettings.registerContentObserver(Settings.System.SCREEN_OFF_FOD,
+            new ContentObserver(mMainHandler) {
+                @Override
+                public void onChange(boolean selfChange, Uri uri) {
+                    if (uri.getLastPathSegment().equals(Settings.System.SCREEN_OFF_FOD)) {
+                        updateScreenOffFodState();
+                    }
+                }
+            }
+        );
+    }
 
+    private void updateScreenOffFodState() {
+        mScreenOffFod = mSystemSettings.getInt(Settings.System.SCREEN_OFF_FOD, 1) == 1;
     }
 
     /**
@@ -775,6 +812,12 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
         mExecution.assertIsMainThread();
 
         final int reason = request.mRequestReason;
+
+        if (mUdfpsAnimation != null) {
+            mUdfpsAnimation.setIsKeyguard(reason ==
+                    IUdfpsOverlayController.REASON_AUTH_FPM_KEYGUARD);
+        }
+
         if (mView == null) {
             try {
                 Log.v(TAG, "showUdfpsOverlay | adding window reason=" + reason);
@@ -998,6 +1041,9 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
         for (Callback cb : mCallbacks) {
             cb.onFingerDown();
         }
+        if (mUdfpsAnimation != null) {
+            mUdfpsAnimation.show();
+        }
     }
 
     private void onFingerUp() {
@@ -1013,6 +1059,9 @@ public class UdfpsController implements DozeReceiver, UdfpsHbmProvider {
             for (Callback cb : mCallbacks) {
                 cb.onFingerUp();
             }
+        }
+        if (mUdfpsAnimation != null) {
+            mUdfpsAnimation.hide();
         }
         mOnFingerDown = false;
         if (mView.isIlluminationRequested()) {

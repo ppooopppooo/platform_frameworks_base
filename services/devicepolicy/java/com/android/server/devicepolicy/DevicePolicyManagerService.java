@@ -12647,6 +12647,13 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
         }
 
         @Override
+        public @Nullable ComponentName getProfileOwnerOrDeviceOwnerSupervisionComponent(
+                @NonNull UserHandle userHandle) {
+            return DevicePolicyManagerService.this.getProfileOwnerOrDeviceOwnerSupervisionComponent(
+                    userHandle);
+        }
+
+        @Override
         public boolean isActiveDeviceOwner(int uid) {
             return isDeviceOwner(new CallerIdentity(uid, null, null));
         }
@@ -15540,11 +15547,11 @@ public class DevicePolicyManagerService extends BaseIDevicePolicyManager {
     @Override
     public boolean isLogoutEnabled() {
         if (!mHasFeature) {
-            return false;
+            return true;
         }
         synchronized (getLockObject()) {
             ActiveAdmin deviceOwner = getDeviceOwnerAdminLocked();
-            return (deviceOwner != null) && deviceOwner.isLogoutEnabled;
+            return (deviceOwner == null) || deviceOwner.isLogoutEnabled;
         }
     }
 

@@ -36,6 +36,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.SearchManager;
 import android.app.WallpaperManager;
+import android.app.compat.gms.GmsCompat;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -2818,6 +2819,10 @@ public final class Settings {
         public boolean putStringForUser(ContentResolver cr, String name, String value,
                 String tag, boolean makeDefault, final int userHandle,
                 boolean overrideableByRestore) {
+            if (GmsCompat.isEnabled()) {
+                return true;
+            }
+
             try {
                 Bundle arg = new Bundle();
                 arg.putString(Settings.NameValueTable.VALUE, value);
@@ -3363,6 +3368,8 @@ public final class Settings {
 
             // At one time in System, then Global, but now back in Secure
             MOVED_TO_SECURE.add(Secure.INSTALL_NON_MARKET_APPS);
+
+            MOVED_TO_SECURE.add(Secure.VOLUME_LINK_NOTIFICATION);
         }
 
         @UnsupportedAppUsage(maxTargetSdk = Build.VERSION_CODES.R, trackingBug = 170729553)
@@ -4845,6 +4852,12 @@ public final class Settings {
         public static final String DATE_FORMAT = "date_format";
 
         /**
+         * Defines the screen-off animation to display
+         * @hide
+         */
+        public static final String SCREEN_OFF_ANIMATION = "screen_off_animation";
+
+        /**
          * Whether the setup wizard has been run before (on first boot), or if
          * it still needs to be run.
          *
@@ -5993,6 +6006,13 @@ public final class Settings {
          */
         public static final String DOZE_ON_CHARGE = "doze_on_charge";
 
+        /**
+         * Enable fod detection even when screen is off
+         * Default value is 0
+         * @hide
+         */
+        @Readable
+        public static final String SCREEN_OFF_FOD = "screen_off_fod";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to
@@ -6011,6 +6031,189 @@ public final class Settings {
          * @hide
          */
         public static final String THREE_FINGER_GESTURE = "three_finger_gesture";
+
+        /**
+         * Whether the phone ringtone should be played in an increasing manner
+         * @hide
+         */
+        public static final String INCREASING_RING = "increasing_ring";
+
+        /**
+         * Start volume fraction for increasing ring volume
+         * @hide
+         */
+        public static final String INCREASING_RING_START_VOLUME = "increasing_ring_start_vol";
+
+        /**
+         * Ramp up time (seconds) for increasing ring
+         * @hide
+         */
+        public static final String INCREASING_RING_RAMP_UP_TIME = "increasing_ring_ramp_up_time";
+
+        /**          
+          * Setting to enable/disable gaming mode
+          * @hide
+          */
+        @Readable
+        public static final String GAMING_MODE_ENABLED = "gaming_mode_enabled";
+
+        /**
+          * 0 - user is not in gaming mode
+          * 1 - user is in gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_ACTIVE = "gaming_mode_active";
+
+        /**
+          * Dynamically identify the top application and add it to the list
+          * @hide
+          */
+        public static final String GAMING_MODE_DYNAMIC_ADD = "gaming_mode_dynamic_add";
+
+        /**
+          * @hide
+          */
+        @Readable
+        public static final String GAMING_MODE_APP_LIST = "gaming_mode_app_list";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_REMOVED_APP_LIST = "gaming_mode_removed_app_list";
+
+        /**
+          * Auto answer call in gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_AUTO_ANSWER_CALL = "gaming_mode_auto_answer_call";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_AUTO_BRIGHTNESS = "gaming_mode_disable_auto_brightness";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_NOTIFICATION_ALERT = "gaming_mode_disable_notification_alert";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_RINGTONE = "gaming_mode_disable_ringtone";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DISABLE_GESTURE = "gaming_mode_disable_gesture";
+
+        /**
+          * Change performance level in gaming mode
+          * @hide
+          */
+        public static final String GAMING_MODE_CHANGE_PERFORMANCE_LEVEL = "gaming_mode_change_performance_level";
+
+        /**
+          * Prefermance level
+          * 0 - 6 : Powersave - Performance
+          * @hide
+          */
+        public static final String GAMING_MODE_PERFORMANCE_LEVEL = "gaming_mode_performance_level";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_QS_APP_LIST = "gaming_mode_qs_app_list";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_SHOW_DANMAKU = "gaming_mode_show_danmaku";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_SHOW_FPSINFO = "gaming_mode_show_fpsinfo";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SPEED_HORIZONTAL = "gaming_mode_danmaku_speed_horizontal";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SPEED_VERTICAL = "gaming_mode_danmaku_speed_vertical";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SIZE_HORIZONTAL = "gaming_mode_danmaku_size_horizontal";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_SIZE_VERTICAL = "gaming_mode_danmaku_size_vertical";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_DYNAMIC_NOTIFICATION_FILTER = "gaming_mode_danmaku_dynamic_notification_filter";
+
+        /**
+          * @hide
+          */
+        public static final String GAMING_MODE_DANMAKU_APP_BLACKLIST = "gaming_mode_danmaku_app_blacklist";
+
+        /**
+          * @hide
+          */
+        @Readable
+        public static final String GAMING_MODE_USE_GAME_DRIVER = "gaming_mode_use_game_driver";
+
+        /**
+          * Opacity adjustment for the GamingMode's menu
+          * @hide
+          */
+        public static final String GAMING_MODE_MENU_OPACITY = "gaming_mode_menu_opacity";
+
+        /**
+         * @hide
+         */
+        public static final String GAMING_MODE_USE_OVERLAY_MENU = "gaming_mode_use_overlay_menu";
+
+        /**
+         * Whether to force small clock on keyguard
+         * @hide
+         */
+        public static final String LOCKSCREEN_SMALL_CLOCK = "lockscreen_small_clock";
+
+        /**
+         * Volume panel on left
+         * @hide
+         */
+        public static final String VOLUME_PANEL_ON_LEFT = "volume_panel_on_left";
+
+        /**
+         * Whether to enable the ripple animation on fingerprint unlock
+         * @hide
+         */
+        public static final String ENABLE_RIPPLE_EFFECT = "enable_ripple_effect";
+
+        /**
+         * @hide
+         */
+        public static final String UDFPS_ANIM = "udfps_anim";
+
+        /**
+         * @hide
+         */
+        public static final String UDFPS_ANIM_STYLE = "udfps_anim_style";
+
+        /**
+         * @hide
+         */
+        public static final String UDFPS_ICON = "udfps_icon";
 
         /**
          * These are all public system settings
@@ -10967,6 +11170,12 @@ public final class Settings {
          * @hide
          */
         public static final String ADVANCED_REBOOT = "advanced_reboot";
+
+        /**
+         * Boolean value whether to link ringtone and notification volume
+         * @hide
+         */
+        public static final String VOLUME_LINK_NOTIFICATION = "volume_link_notification";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to

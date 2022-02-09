@@ -443,9 +443,7 @@ public class QuickStatusBarHeader extends FrameLayout implements
                 StatusBarWindowView.paddingNeededForCutoutAndRoundedCorner(
                         cutout, cornerCutoutPadding, -1);
         mDatePrivacyView.setPadding(padding.first, 0, padding.second, 0);
-        if (cutout == null) {
-            mDateContainer.setPadding(0, 0, 0, 0);
-        }
+        mClockIconsView.setPadding(padding.first, 0, padding.second, 0);
         LinearLayout.LayoutParams datePrivacySeparatorLayoutParams =
                 (LinearLayout.LayoutParams) mDatePrivacySeparator.getLayoutParams();
         LinearLayout.LayoutParams mClockIconsSeparatorLayoutParams =
@@ -532,6 +530,10 @@ public class QuickStatusBarHeader extends FrameLayout implements
         }
 
         mDatePrivacyView.setPadding(paddingLeft,
+                mWaterfallTopInset,
+                paddingRight,
+                0);
+        mClockIconsView.setPadding(paddingLeft,
                 mWaterfallTopInset,
                 paddingRight,
                 0);

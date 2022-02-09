@@ -183,6 +183,11 @@
     <!-- Self permission for internal broadcasts. -->
     <permission android:name="com.android.systemui.permission.SELF"
             android:protectionLevel="signature" />
+    
+    <!-- Adding Screen Recording -->
+    <permission android:name="com.android.systemui.permission.SCREEN_RECORDING"
+            android:protectionLevel="signature" />
+
     <uses-permission android:name="com.android.systemui.permission.SELF" />
 
     <permission android:name="com.android.systemui.permission.PLUGIN"
@@ -319,6 +324,13 @@
 
     <protected-broadcast android:name="com.android.systemui.doze.pulse" />
 
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY"/>
+    <permission android:name="com.android.systemui.permission.SEND_ALERT_BROADCASTS" android:protectionLevel="preinstalled|signature"/>
+    <uses-permission android:name="com.google.android.deskclock.permission.RECEIVE_ALERT_BROADCASTS"/>
+    <protected-broadcast android:name="com.google.android.systemui.smartspace.CLICK_EVENT"/>
+    <protected-broadcast android:name="com.google.android.systemui.smartspace.ENABLE_UPDATE"/>
+    <protected-broadcast android:name="com.google.android.systemui.smartspace.EXPIRE_EVENT"/>
+
     <application
         android:name=".SystemUIApplication"
         android:persistent="true"
@@ -387,7 +399,13 @@
             android:theme="@style/ScreenRecord"
             android:showForAllUsers="true"
             android:excludeFromRecents="true" />
-        <service android:name=".screenrecord.RecordingService" />
+        <service android:name=".screenrecord.RecordingService" 
+            android:exported="true"
+            android:permission="com.android.systemui.permission.SCREEN_RECORDING">
+            <intent-filter>
+                <action android:name="com.android.systemui.screenrecord.RecordingService" />
+            </intent-filter>
+        </service>
 
         <receiver android:name=".SysuiRestartReceiver"
             android:exported="false">
@@ -884,7 +902,7 @@
                 android:resource="@xml/fileprovider" />
         </provider>
 
-        <provider android:name=".keyguard.KeyguardSliceProvider"
+        <provider android:name="com.syberia.android.systemui.keyguard.SyberiaKeyguardSliceProvider"
                   android:authorities="com.android.systemui.keyguard"
                   android:grantUriPermissions="true"
                   android:exported="true">

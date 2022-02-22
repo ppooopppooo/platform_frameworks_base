@@ -253,7 +253,7 @@ public interface BluetoothProfile {
      * MCP_SERVER
      * @hide
      */
-    public static final int MCP_SERVER = 28;
+    public static final int MCP_SERVER = 29;
 
     /**
      * Max profile ID. This value should be updated whenever a new profile is added to match
@@ -261,7 +261,7 @@ public interface BluetoothProfile {
      *
      * @hide
      */
-    int MAX_PROFILE_ID = 28;
+    int MAX_PROFILE_ID = 29;
 
     /**
      * Default priority for devices that we try to auto-connect to and

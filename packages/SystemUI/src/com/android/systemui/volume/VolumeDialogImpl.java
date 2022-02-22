@@ -86,6 +86,7 @@ import android.view.View.AccessibilityDelegate;
 import android.view.View.OnAttachStateChangeListener;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
+import android.view.ViewGroup.MarginLayoutParams;
 import android.view.ViewPropertyAnimator;
 import android.view.ViewStub;
 import android.view.ViewTreeObserver;
@@ -223,7 +224,7 @@ public class VolumeDialogImpl implements VolumeDialog,
     private float mRingerDrawerClosedAmount = 1f;
 
     private ImageButton mRingerIcon;
-    private ViewGroup mODICaptionsView;
+    private FrameLayout mODICaptionsView;
     private CaptionsToggleImageButton mODICaptionsIcon;
     private View mSettingsView;
     private ImageButton mSettingsIcon;
@@ -259,7 +260,7 @@ public class VolumeDialogImpl implements VolumeDialog,
     private BackgroundBlurDrawable mDialogRowsViewBackground;
 
     // Volume panel placement left or right
-    private boolean mVolumePanelOnLeft;
+    public boolean mVolumePanelOnLeft;
 
     private class CustomSettingsObserver extends ContentObserver {
         CustomSettingsObserver(Handler handler) {
@@ -436,11 +437,10 @@ public class VolumeDialogImpl implements VolumeDialog,
         lp.format = PixelFormat.TRANSLUCENT;
         lp.setTitle(VolumeDialogImpl.class.getSimpleName());
         lp.windowAnimations = -1;
-        lp.gravity = mContext.getResources().getInteger(R.integer.volume_dialog_gravity);
-
-        if (!mShowActiveStreamOnly) {
-            lp.gravity &= ~(Gravity.LEFT | Gravity.RIGHT);
-            lp.gravity |= mVolumePanelOnLeft ? Gravity.LEFT : Gravity.RIGHT;
+        if (!mVolumePanelOnLeft) {
+            lp.gravity = Gravity.RIGHT | Gravity.CENTER_VERTICAL;
+        } else {
+            lp.gravity = Gravity.LEFT | Gravity.CENTER_VERTICAL;
         }
 
         mWindow.setAttributes(lp);
@@ -577,11 +577,17 @@ public class VolumeDialogImpl implements VolumeDialog,
         mODICaptionsView = mDialog.findViewById(R.id.odi_captions);
         if (mODICaptionsView != null) {
             mODICaptionsIcon = mODICaptionsView.findViewById(R.id.odi_captions_icon);
+            if (!mShowActiveStreamOnly && !isLandscape()){
+                setLayoutGravity(mODICaptionsView.getLayoutParams(), mVolumePanelOnLeft ? Gravity.LEFT : Gravity.RIGHT);
+            }
         }
-        mODICaptionsTooltipViewStub = mDialog.findViewById(R.id.odi_captions_tooltip_stub);
+        mODICaptionsTooltipViewStub = mDialog.findViewById(mVolumePanelOnLeft ?
+                R.id.odi_captions_tooltip_stub_left :
+                R.id.odi_captions_tooltip_stub);
         if (mHasSeenODICaptionsTooltip && mODICaptionsTooltipViewStub != null) {
             mDialogView.removeView(mODICaptionsTooltipViewStub);
             mODICaptionsTooltipViewStub = null;
+        } else if (mODICaptionsTooltipViewStub != null) {
         }
 
         mSettingsView = mDialog.findViewById(R.id.settings_container);
@@ -620,6 +626,14 @@ public class VolumeDialogImpl implements VolumeDialog,
         initRingerH();
         initSettingsH();
         initODICaptionsH();
+    }
+
+    private void setLayoutGravity(Object obj, int gravity) {
+        if (obj instanceof FrameLayout.LayoutParams) {
+            ((FrameLayout.LayoutParams) obj).gravity = gravity;
+        } else if (obj instanceof LinearLayout.LayoutParams) {
+            ((LinearLayout.LayoutParams) obj).gravity = gravity;
+        }
     }
 
     private void initDimens() {
@@ -689,7 +703,11 @@ public class VolumeDialogImpl implements VolumeDialog,
         if (D.BUG) Slog.d(TAG, "Adding row for stream " + stream);
         VolumeRow row = new VolumeRow();
         initRow(row, stream, iconRes, iconMuteRes, important, defaultStream);
-        mDialogRowsView.addView(row.view);
+        if (!mVolumePanelOnLeft) {
+            mDialogRowsView.addView(row.view, 0);
+        } else {
+            mDialogRowsView.addView(row.view);
+        }
         mRows.add(row);
     }
 
@@ -700,7 +718,11 @@ public class VolumeDialogImpl implements VolumeDialog,
             initRow(row, row.stream, row.iconRes, row.iconMuteRes, row.important,
                     row.defaultStream);
             mDialogRowsView.addView(row.view);
-            updateVolumeRowH(row);
+            if (!mVolumePanelOnLeft) {
+                mDialogRowsView.addView(row.view, 0);
+            } else {
+                mDialogRowsView.addView(row.view);
+            }
         }
     }
 

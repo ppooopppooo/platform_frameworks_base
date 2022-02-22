@@ -7,16 +7,20 @@ import com.android.systemui.dagger.SystemUIBinder;
 import com.android.systemui.dagger.SysUIComponent;
 import com.android.systemui.dagger.SystemUIModule;
 
+import com.syberia.android.systemui.columbus.ColumbusModule;
 import com.syberia.android.systemui.keyguard.SyberiaKeyguardSliceProvider;
 import com.syberia.android.systemui.smartspace.KeyguardSmartspaceController;
+import com.syberia.android.systemui.elmyra.ElmyraModule;
 
 import dagger.Subcomponent;
 
 @SysUISingleton
 @Subcomponent(modules = {
+        ColumbusModule.class,
         DefaultComponentBinder.class,
         DependencyProvider.class,
-        SystemUIBinder.class,
+        ElmyraModule.class,
+        SyberiaSystemUIBinder.class,
         SystemUIModule.class,
         SyberiaSystemUIModule.class})
 public interface SyberiaSysUIComponent extends SysUIComponent {

@@ -6097,6 +6097,22 @@ public final class Settings {
           */
         public static final String GAMING_MODE_DISABLE_NOTIFICATION_ALERT = "gaming_mode_disable_notification_alert";
 
+	/**
+         * Adaptive playback
+         * Automatically pause media when the volume is muted and
+         * will resume automatically when volume is restored.
+         *   0 = disabled
+         *   1 = enabled
+         * @hide
+         */
+        public static final String ADAPTIVE_PLAYBACK_ENABLED = "adaptive_playback_enabled";
+
+        /**
+         * Adaptive playback's timeout in ms
+         * @hide
+         */
+        public static final String ADAPTIVE_PLAYBACK_TIMEOUT = "adaptive_playback_timeout";
+
         /**
           * @hide
           */
@@ -6209,6 +6225,12 @@ public final class Settings {
          * @hide
          */
         public static final String UDFPS_ANIM_STYLE = "udfps_anim_style";
+
+        /**
+         * Whether StatusBar icons should use app icon
+         * @hide
+         */
+        public static final String STATUSBAR_ICONS_STYLE = "statusbar_icons_style";
 
         /**
          * @hide
@@ -6365,6 +6387,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(BATTERY_LIGHT_MEDIUM_COLOR);
             PRIVATE_SETTINGS.add(BATTERY_LIGHT_FULL_COLOR);
             PRIVATE_SETTINGS.add(BATTERY_LIGHT_REALLYFULL_COLOR);
+            PRIVATE_SETTINGS.add(STATUSBAR_ICONS_STYLE);
         }
 
         /**

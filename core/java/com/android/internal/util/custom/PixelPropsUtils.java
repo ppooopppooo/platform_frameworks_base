@@ -103,7 +103,6 @@ public class PixelPropsUtils {
             "com.tencent.ig",
             "com.pubg.imobile",
             "com.pubg.krmobile",
-            "com.pubg.newstate",
             "com.vng.pubgmobile",
             "com.rekoo.pubgm",
             "com.tencent.tmgp.pubgmhd",
@@ -126,7 +125,7 @@ public class PixelPropsUtils {
         propsToChangePixel6.put("DEVICE", "raven");
         propsToChangePixel6.put("PRODUCT", "raven");
         propsToChangePixel6.put("MODEL", "Pixel 6 Pro");
-        propsToChangePixel6.put("FINGERPRINT", "google/raven/raven:12/SQ1D.220205.003/8069835:user/release-keys");
+        propsToChangePixel6.put("FINGERPRINT", "google/raven/raven:12/SQ1D.220205.004/8151327:user/release-keys");
         propsToChangePixel5 = new HashMap<>();
         propsToChangePixel5.put("BRAND", "google");
         propsToChangePixel5.put("MANUFACTURER", "Google");

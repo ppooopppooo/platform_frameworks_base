@@ -32,8 +32,6 @@ import com.android.systemui.statusbar.phone.StatusBarContentInsetsProvider
 import com.android.systemui.statusbar.phone.StatusBarIconController
 import com.android.systemui.statusbar.phone.StatusIconContainer
 import com.android.systemui.statusbar.policy.Clock
-import com.android.systemui.statusbar.policy.VariableDateView
-import com.android.systemui.statusbar.policy.VariableDateViewController
 import com.android.systemui.util.mockito.any
 import com.android.systemui.util.mockito.argumentCaptor
 import com.android.systemui.util.mockito.capture
@@ -76,15 +74,9 @@ class QuickStatusBarHeaderControllerTest : SysuiTestCase() {
     @Mock
     private lateinit var qsCarrierGroup: QSCarrierGroup
     @Mock
-    private lateinit var variableDateViewControllerFactory: VariableDateViewController.Factory
-    @Mock
-    private lateinit var variableDateViewController: VariableDateViewController
-    @Mock
     private lateinit var batteryMeterViewController: BatteryMeterViewController
     @Mock
     private lateinit var clock: Clock
-    @Mock
-    private lateinit var variableDateView: VariableDateView
     @Mock
     private lateinit var mockView: View
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
@@ -104,8 +96,6 @@ class QuickStatusBarHeaderControllerTest : SysuiTestCase() {
         stubViews()
         `when`(iconContainer.context).thenReturn(context)
         `when`(qsCarrierGroupControllerBuilder.build()).thenReturn(qsCarrierGroupController)
-        `when`(variableDateViewControllerFactory.create(any()))
-                .thenReturn(variableDateViewController)
         `when`(view.resources).thenReturn(mContext.resources)
         `when`(view.isAttachedToWindow).thenReturn(true)
         `when`(view.context).thenReturn(context)
@@ -120,9 +110,13 @@ class QuickStatusBarHeaderControllerTest : SysuiTestCase() {
                 colorExtractor,
                 qsExpansionPathInterpolator,
                 batteryMeterViewController,
+<<<<<<< HEAD
                 featureFlags,
                 variableDateViewControllerFactory,
                 insetsProvider
+=======
+                featureFlags
+>>>>>>> parent of 0558e1211604 (Replace DateView with VariableDateView (1/2))
         )
     }
 
@@ -206,7 +200,5 @@ class QuickStatusBarHeaderControllerTest : SysuiTestCase() {
         `when`(view.findViewById<QSCarrierGroup>(R.id.carrier_group)).thenReturn(qsCarrierGroup)
         `when`(view.findViewById<StatusIconContainer>(R.id.statusIcons)).thenReturn(iconContainer)
         `when`(view.findViewById<Clock>(R.id.clock)).thenReturn(clock)
-        `when`(view.requireViewById<VariableDateView>(R.id.date)).thenReturn(variableDateView)
-        `when`(view.requireViewById<VariableDateView>(R.id.date_clock)).thenReturn(variableDateView)
     }
 }

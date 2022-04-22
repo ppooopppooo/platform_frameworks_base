@@ -349,6 +349,8 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
     private SensorPrivacyManager mSensorPrivacyManager;
     private int mFaceAuthUserId;
 
+    private boolean mFingerprintWakeAndUnlock;
+
     /**
      * Short delay before restarting fingerprint authentication after a successful try. This should
      * be slightly longer than the time between onFingerprintAuthenticated and
@@ -800,6 +802,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
     private void handleFingerprintAuthenticated(int authUserId, boolean isStrongBiometric) {
         Trace.beginSection("KeyGuardUpdateMonitor#handlerFingerPrintAuthenticated");
+        if (mOccludingAppRequestingFace){
+            requestFaceAuthOnOccludingApp(false);
+        }
         try {
             final int userId;
             try {
@@ -1007,6 +1012,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
     private void handleFaceAuthenticated(int authUserId, boolean isStrongBiometric) {
         Trace.beginSection("KeyGuardUpdateMonitor#handlerFaceAuthenticated");
+        if (mOccludingAppRequestingFace){
+            requestFaceAuthOnOccludingApp(false);
+        }
         try {
             if (mGoingToSleep) {
                 Log.d(TAG, "Aborted successful auth because device is going to sleep.");
@@ -1193,9 +1201,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         final DevicePolicyManager dpm =
                 (DevicePolicyManager) mContext.getSystemService(Context.DEVICE_POLICY_SERVICE);
         // TODO(b/140035044)
-        return whitelistIpcs(() -> dpm != null && (dpm.getKeyguardDisabledFeatures(null, userId)
+        return dpm != null && (dpm.getKeyguardDisabledFeatures(null, userId)
                 & DevicePolicyManager.KEYGUARD_DISABLE_FACE) != 0
-                || isSimPinSecure());
+                || isSimPinSecure();
     }
 
     private boolean getIsFaceAuthenticated() {
@@ -2332,7 +2340,18 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         final int user = getCurrentUser();
         final boolean userDoesNotHaveTrust = !getUserHasTrust(user);
         final boolean shouldListenForFingerprintAssistant = shouldListenForFingerprintAssistant();
-        final boolean shouldListenKeyguardState =
+        final boolean shouldListenKeyguardState;
+        if (!mFingerprintWakeAndUnlock) {
+            shouldListenKeyguardState =
+                (mKeyguardIsVisible
+                        || mBouncer
+                        || shouldListenForFingerprintAssistant
+                        || (mKeyguardOccluded && mIsDreaming))
+                        && mDeviceInteractive && !mGoingToSleep && !mKeyguardGoingAway
+                        || (mKeyguardOccluded && userDoesNotHaveTrust
+                            && (mOccludingAppRequestingFp || isUdfps));
+        } else {
+            shouldListenKeyguardState =
                 mKeyguardIsVisible
                         || !mDeviceInteractive
                         || (mBouncer && !mKeyguardGoingAway)
@@ -2341,6 +2360,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
                         || (mKeyguardOccluded && mIsDreaming)
                         || (mKeyguardOccluded && userDoesNotHaveTrust
                             && (mOccludingAppRequestingFp || isUdfps));
+        }
 
         // Only listen if this KeyguardUpdateMonitor belongs to the primary user. There is an
         // instance of KeyguardUpdateMonitor for each user but KeyguardUpdateMonitor is user-aware.
@@ -3514,6 +3534,9 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
             resolver.registerContentObserver(Settings.Secure.getUriFor(
                     Settings.Secure.FACE_UNLOCK_METHOD), false, this,
                     UserHandle.USER_ALL);
+            resolver.registerContentObserver(Settings.System.getUriFor(
+                    Settings.System.FP_WAKE_UNLOCK), false, this,
+                    UserHandle.USER_ALL);
             updateSettings();
         }
 
@@ -3525,13 +3548,16 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
     private void updateSettings() {
         ContentResolver resolver = mContext.getContentResolver();
-        if (mFaceAuthOnlyOnSecurityView){
+        if (mFaceAuthOnlyOnSecurityView) {
             mFaceUnlockBehavior = FACE_UNLOCK_BEHAVIOR_SWIPE;
-        }else{
+        } else {
             mFaceUnlockBehavior = Settings.Secure.getIntForUser(resolver,
                 Settings.Secure.FACE_UNLOCK_METHOD, FACE_UNLOCK_BEHAVIOR_DEFAULT,
                 UserHandle.USER_CURRENT);
         }
+        mFingerprintWakeAndUnlock = Settings.System.getIntForUser(resolver,
+                Settings.System.FP_WAKE_UNLOCK, 0,
+                UserHandle.USER_CURRENT) == 0;
     }
 
     /**

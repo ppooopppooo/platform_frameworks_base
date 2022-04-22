@@ -95,6 +95,7 @@ import android.window.WindowContext;
 import android.window.WindowTokenClient;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.gmscompat.BinderRedirector;
 import com.android.internal.gmscompat.GmsHooks;
 import com.android.internal.util.Preconditions;
 
@@ -1092,6 +1093,13 @@ class ContextImpl extends Context {
                             + " context requires the FLAG_ACTIVITY_NEW_TASK flag."
                             + " Is this really what you want?");
         }
+
+        if (GmsCompat.isEnabled()) {
+            if (GmsHooks.startActivity(intent, options)) {
+                return;
+            }
+        }
+
         mMainThread.getInstrumentation().execStartActivity(
                 getOuterContext(), mMainThread.getApplicationThread(), null,
                 (Activity) null, intent, -1, options);
@@ -1394,8 +1402,6 @@ class ContextImpl extends Context {
 
     @Override
     public void sendBroadcastAsUser(Intent intent, UserHandle user) {
-        user = GmsHooks.getUserHandle(user);
-
         String resolvedType = intent.resolveTypeIfNeeded(getContentResolver());
         try {
             intent.prepareToLeaveProcess(this);
@@ -1417,8 +1423,6 @@ class ContextImpl extends Context {
     @Override
     public void sendBroadcastAsUser(Intent intent, UserHandle user, String receiverPermission,
             Bundle options) {
-        user = GmsHooks.getUserHandle(user);
-
         String resolvedType = intent.resolveTypeIfNeeded(getContentResolver());
         String[] receiverPermissions = receiverPermission == null ? null
                 : new String[] {receiverPermission};
@@ -1437,8 +1441,6 @@ class ContextImpl extends Context {
     @Override
     public void sendBroadcastAsUser(Intent intent, UserHandle user,
             String receiverPermission, int appOp) {
-        user = GmsHooks.getUserHandle(user);
-
         String resolvedType = intent.resolveTypeIfNeeded(getContentResolver());
         String[] receiverPermissions = receiverPermission == null ? null
                 : new String[] {receiverPermission};
@@ -1473,8 +1475,6 @@ class ContextImpl extends Context {
     public void sendOrderedBroadcastAsUser(Intent intent, UserHandle user,
             String receiverPermission, int appOp, Bundle options, BroadcastReceiver resultReceiver,
             Handler scheduler, int initialCode, String initialData, Bundle initialExtras) {
-        user = GmsHooks.getUserHandle(user);
-
         IIntentReceiver rd = null;
         if (resultReceiver != null) {
             if (mPackageInfo != null) {
@@ -1831,10 +1831,6 @@ class ContextImpl extends Context {
 
     @Override
     public ComponentName startService(Intent service) {
-        if (GmsCompat.isEnabled()) {
-            return GmsHooks.startService(this, service);
-        }
-
         warnIfCallingFromSystemProcess();
         return startServiceCommon(service, false, mUser);
     }
@@ -1998,6 +1994,13 @@ class ContextImpl extends Context {
             throw new RuntimeException("Not supported in system context");
         }
         validateServiceIntent(service);
+
+        BinderRedirector.maybeInit(service);
+        if (GmsCompat.isEnabled()) {
+            // requires privileged START_ACTIVITIES_FROM_BACKGROUND permission
+            flags &= ~BIND_ALLOW_BACKGROUND_ACTIVITY_STARTS;
+        }
+
         try {
             IBinder token = getActivityToken();
             if (token == null && (flags&BIND_AUTO_CREATE) == 0 && mPackageInfo != null
@@ -2076,6 +2079,12 @@ class ContextImpl extends Context {
 
     @Override
     public Object getSystemService(String name) {
+        if (GmsCompat.isEnabled()) {
+            if (GmsHooks.isHiddenSystemService(name)) {
+                return null;
+            }
+        }
+
         if (vmIncorrectContextUseEnabled()) {
             // Check incorrect Context usage.
             if (WINDOW_SERVICE.equals(name) && !isUiContext()) {

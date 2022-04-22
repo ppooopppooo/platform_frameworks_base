@@ -16,42 +16,37 @@
 
 package com.android.internal.gmscompat;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.ActivityThread;
 import android.app.Application;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationChannelGroup;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.app.compat.gms.GmsCompat;
-import android.content.ComponentName;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.pm.SharedLibraryInfo;
-import android.os.Build;
+import android.database.Cursor;
+import android.database.MatrixCursor;
+import android.net.Uri;
+import android.os.Bundle;
 import android.os.Process;
+import android.os.RemoteException;
 import android.os.SystemClock;
-import android.os.UserHandle;
-import android.os.UserManager;
+import android.provider.ContactsContract;
+import android.provider.Downloads;
 import android.provider.Settings;
 import android.util.Log;
 import android.util.SparseArray;
 import android.webkit.WebView;
 
-import com.android.internal.R;
-import com.android.internal.gmscompat.dynamite.GmsDynamiteHooks;
-
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * API shims for Google Play Services compatibility. Hooks that are more complicated than a simple
+ * API shims for GMS compatibility. Hooks that are more complicated than a simple
  * constant return value should be delegated to this class for easier maintenance.
  *
  * @hide
@@ -59,113 +54,46 @@ import java.util.List;
 public final class GmsHooks {
     private static final String TAG = "GmsCompat/Hooks";
 
-    // Foreground service notifications
-    // id was chosen when fgs was the only channel
-    static final String COMPAT_GROUP_ID = "gmscompat_fgs_group";
-    private static final String FGS_CHANNEL_ID = "gmscompat_fgs_channel";
-    private static final int FGS_NOTIFICATION_ID = 529977835;
-    private static boolean notificationChannelsCreated;
+    public static void init(Context ctx, String packageName) {
+        String processName = Application.getProcessName();
 
-    // Static only
-    private GmsHooks() { }
-
-
-    /*
-     * Foreground service notifications to keep GMS services alive
-     */
-
-    // Make all services foreground to keep them alive
-    // ContextImpl#startService(Intent)
-    public static ComponentName startService(Context context, Intent service) {
-        return context.startForegroundService(service);
-    }
-
-    static Notification.Builder obtainNotificationBuilder(Context context, String channelId) {
-        if (!notificationChannelsCreated) {
-            createNotificationChannels(context);
-            notificationChannelsCreated = true;
+        if (!packageName.equals(processName)) {
+            // Fix RuntimeException: Using WebView from more than one process at once with the same data
+            // directory is not supported. https://crbug.com/558377
+            WebView.setDataDirectorySuffix("process-shim--" + processName);
         }
-        return new Notification.Builder(context, channelId);
-    }
 
-    private static void createNotificationChannels(Context context) {
-        NotificationManager manager = context.getSystemService(NotificationManager.class);
-        NotificationChannelGroup group = new NotificationChannelGroup(COMPAT_GROUP_ID,
-                context.getText(R.string.gmscompat_channel_group));
-        manager.createNotificationChannelGroup(group);
-
-        ArrayList<NotificationChannel> channels = new ArrayList<>(7);
-        {
-            CharSequence name = context.getText(R.string.foreground_service_gmscompat_channel);
-            NotificationChannel c = new NotificationChannel(FGS_CHANNEL_ID, name,
-                    NotificationManager.IMPORTANCE_LOW);
-            c.setDescription(context.getString(R.string.foreground_service_gmscompat_channel_desc));
-            c.setShowBadge(false);
-            channels.add(c);
-        }
         if (GmsCompat.isPlayStore()) {
-            PlayStoreHooks.createNotificationChannel(context, channels);
+            PlayStoreHooks.init();
         }
 
-        for (int i = 0; i < channels.size(); ++i) {
-            channels.get(i).setGroup(COMPAT_GROUP_ID);
+        GmsCompatApp.connect(ctx, processName);
+    }
+
+    // ContextImpl#getSystemService(String)
+    public static boolean isHiddenSystemService(String name) {
+        // return true only for services that are null-checked
+        switch (name) {
+            case Context.CONTEXTHUB_SERVICE:
+            case Context.WIFI_SCANNING_SERVICE:
+            case Context.APP_INTEGRITY_SERVICE:
+            // used for factory reset protection
+            case Context.PERSISTENT_DATA_BLOCK_SERVICE:
+            // used for updateable fonts
+            case Context.FONT_SERVICE:
+                return true;
         }
-
-        manager.createNotificationChannels(channels);
+        return false;
     }
 
-    // Post notification on foreground service start
-    // ActivityThread#handleCreateService(CreateServiceData)
-    public static void attachService(Service service) {
-        // Isolated processes (e.g. WebView) don't have access to NotificationManager. They don't
-        // need a foreground notification anyway, so bail out early.
-        if (!GmsCompat.isEnabled() || Process.isIsolated()) {
-            return;
+    // ApplicationPackageManager#hasSystemFeature(String, int)
+    public static boolean isHiddenSystemFeature(String name) {
+        switch (name) {
+            // checked before accessing privileged UwbManager
+            case "android.hardware.uwb":
+                return true;
         }
-
-        // Intent: notification channel settings
-        Intent intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
-        intent.putExtra(Settings.EXTRA_APP_PACKAGE, service.getPackageName());
-        intent.putExtra(Settings.EXTRA_CHANNEL_ID, FGS_CHANNEL_ID);
-        PendingIntent pi = PendingIntent.getActivity(service, 0, intent, PendingIntent.FLAG_IMMUTABLE);
-
-        // Notification
-        CharSequence appName = service.getApplicationInfo().loadLabel(service.getPackageManager());
-        Notification notification = obtainNotificationBuilder(service, FGS_CHANNEL_ID)
-                .setSmallIcon(service.getApplicationInfo().icon)
-                .setContentTitle(service.getString(R.string.app_running_notification_title, appName))
-                .setContentText(service.getText(R.string.foreground_service_gmscompat_notif_desc))
-                .setContentIntent(pi)
-                .build();
-
-        Log.d(TAG, "Posting notification for service: " + service.getClass().getName());
-        service.startForeground(FGS_NOTIFICATION_ID, notification);
-    }
-
-    // GMS tries to clean up its own notification channels periodically.
-    // Don't let it delete any of compat channels because that throws an exception and crashes GMS.
-    // NotificationManager#deleteNotificationChannel(String)
-    public static boolean skipDeleteNotificationChannel(String channelId) {
-        if (!GmsCompat.isEnabled()) {
-            return false;
-        }
-        return FGS_CHANNEL_ID.equals(channelId) || PlayStoreHooks.PUA_CHANNEL_ID.equals(channelId);
-    }
-
-    /**
-     * API shims
-     */
-
-    // Report a single user on the system
-    // UserManager#getSerialNumbersOfUsers(boolean)
-    public static long[] getSerialNumbersOfUsers(UserManager userManager) {
-        return new long[] { userManager.getSerialNumberForUser(Process.myUserHandle()) };
-    }
-
-    // Current user is always active
-    // ActivityManager#getCurrentUser()
-    public static int getCurrentUser() {
-        return Process.myUserHandle().getIdentifier();
+        return false;
     }
 
     /**
@@ -178,12 +106,7 @@ public final class GmsHooks {
     // Build#getSerial()
     @SuppressLint("HardwareIds")
     public static String getSerial() {
-        Application app = ActivityThread.currentApplication();
-        if (app == null) {
-            return Build.UNKNOWN;
-        }
-
-        String ssaid = Settings.Secure.getString(app.getContentResolver(),
+        String ssaid = Settings.Secure.getString(GmsCompat.appContext().getContentResolver(),
                 Settings.Secure.ANDROID_ID);
         String serial = ssaid.toUpperCase();
         Log.d(TAG, "Generating serial number from SSAID: " + serial);
@@ -191,40 +114,15 @@ public final class GmsHooks {
     }
 
     // Only get package info for current user
+    // ApplicationPackageManager#getInstalledPackages(int)
     // ApplicationPackageManager#getPackageInfo(VersionedPackage, int)
     // ApplicationPackageManager#getPackageInfoAsUser(String, int, int)
-    public static int getPackageInfoFlags(int flags) {
-        if (!GmsCompat.isEnabled()) {
-            return flags;
-        }
-
-        // Remove MATCH_ANY_USER flag to avoid permission denial
-        return flags & ~PackageManager.MATCH_ANY_USER;
-    }
-
-    // Fix RuntimeException: Using WebView from more than one process at once with the same data
-    // directory is not supported. https://crbug.com/558377
-    // Instrumentation#newApplication(ClassLoader, String, Context)
-    public static void initApplicationBeforeOnCreate(Application app) {
-        GmsCompat.initChangeEnableStates(app);
-
+    public static int filterPackageInfoFlags(int flags) {
         if (GmsCompat.isEnabled()) {
-            String processName = Application.getProcessName();
-            if (!app.getPackageName().equals(processName)) {
-                WebView.setDataDirectorySuffix("process-shim--" + processName);
-            }
-
-            GmsDynamiteHooks.initGmsServerApp(app);
-        } else if (GmsCompat.isDynamiteClient()) {
-            GmsDynamiteHooks.initClientApp();
+            // Remove MATCH_ANY_USER flag to avoid permission denial
+            flags &= ~PackageManager.MATCH_ANY_USER;
         }
-    }
-
-    // Redirect cross-user interactions to current user
-    // ContextImpl#sendOrderedBroadcastAsUser
-    // ContextImpl#sendBroadcastAsUser
-    public static UserHandle getUserHandle(UserHandle user) {
-        return GmsCompat.isEnabled() ? Process.myUserHandle() : user;
+        return flags;
     }
 
     static class RecentBinderPid implements Comparable<RecentBinderPid> {
@@ -279,7 +177,8 @@ public final class GmsHooks {
         }
     }
 
-    // Play Games Services relies on getRunningAppProcesses() to figure out whether its client is running.
+    // In some cases (Play Games Services, Play {Asset, Feature} Delivery)
+    // GMS Core relies on getRunningAppProcesses() to figure out whether its client is running.
     // This workaround is racy, because unprivileged apps don't know whether arbitrary pid is alive.
     // ActivityManager#getRunningAppProcesses()
     public static ArrayList<RunningAppProcessInfo> addRecentlyBoundPids(Context context,
@@ -323,4 +222,60 @@ public final class GmsHooks {
         }
         return res;
     }
+
+    // ContentResolver#query(Uri, String[], Bundle, CancellationSignal)
+    public static Cursor interceptQuery(Uri uri, String[] projection) {
+        if ("content://com.google.android.gms.phenotype/com.google.android.location".equals(uri.toString())) {
+            // keep PhenotypeFlags of the location service at their default values
+            // (updated flags degrade its speed and accuracy for unknown reasons)
+            return new MatrixCursor(projection);
+        }
+
+        String authority = uri.getAuthority();
+        if (ContactsContract.AUTHORITY.equals(authority)
+                // com.android.internal.telephony.IccProvider
+                || "icc".equals(authority))
+        {
+            if (!GmsCompat.hasPermission(Manifest.permission.READ_CONTACTS)) {
+                return new MatrixCursor(projection);
+            }
+        }
+        return null;
+    }
+
+    // ContextImpl#startActivity(Intent, Bundle)
+    public static boolean startActivity(Intent intent, Bundle options) {
+        if (ActivityThread.currentActivityThread().hasAtLeastOneResumedActivity()) {
+            return false;
+        }
+
+        // handle background activity starts, which normally require a privileged permission
+
+        Context ctx = GmsCompat.appContext();
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(ctx, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE, options);
+        try {
+            GmsCompatApp.iGms2Gca().startActivityFromTheBackground(ctx.getPackageName(), pendingIntent);
+        } catch (RemoteException e) {
+            GmsCompatApp.callFailed(e);
+        }
+        return true;
+    }
+
+    // ContentResolver#insert(Uri, ContentValues, Bundle)
+    public static void filterContentValues(Uri url, ContentValues values) {
+        if (values != null && Downloads.Impl.CONTENT_URI.equals(url)) {
+            Integer otherUid = values.getAsInteger(Downloads.Impl.COLUMN_OTHER_UID);
+            if (otherUid != null) {
+                if (otherUid.intValue() != Process.SYSTEM_UID) {
+                    throw new IllegalStateException("unexpected COLUMN_OTHER_UID " + otherUid);
+                }
+                // gated by the privileged ACCESS_DOWNLOAD_MANAGER_ADVANCED permission
+                values.remove(Downloads.Impl.COLUMN_OTHER_UID);
+            }
+        }
+    }
+
+    private GmsHooks() {}
 }

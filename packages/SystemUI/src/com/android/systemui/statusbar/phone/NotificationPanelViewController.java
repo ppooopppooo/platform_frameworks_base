@@ -1961,10 +1961,11 @@ public class NotificationPanelViewController extends PanelViewController {
         if (action == MotionEvent.ACTION_CANCEL || action == MotionEvent.ACTION_UP) {
             mConflictingQsExpansionGesture = false;
         }
-        if (action == MotionEvent.ACTION_DOWN && isFullyCollapsed() && isQsExpansionEnabled()) {
+        if (action == MotionEvent.ACTION_DOWN && isFullyCollapsed() && isQsExpansionEnabled() && isOpenQsEvent(event)) {
             mTwoFingerQsExpandPossible = true;
         }
-        if (mTwoFingerQsExpandPossible && isOpenQsEvent(event) && event.getY(event.getActionIndex())
+
+        if ((mShouldUseSplitNotificationShade || mTwoFingerQsExpandPossible) && event.getY(event.getActionIndex())
                 < mStatusBarMinHeight) {
             mMetricsLogger.count(COUNTER_PANEL_OPEN_QS, 1);
             mQsExpandImmediate = true;
@@ -4212,11 +4213,6 @@ public class NotificationPanelViewController extends PanelViewController {
                 /* notifyForDescendants */ false,
                 mSettingsChangeObserver
         );
-        mContentResolver.registerContentObserver(
-                Settings.System.getUriFor(Settings.System.LOCKSCREEN_SMALL_CLOCK),
-                /* notifyForDescendants */ false,
-                mSettingsChangeObserver
-        );
     }
 
     private void unregisterSettingsChangeListener() {
@@ -4583,8 +4579,6 @@ public class NotificationPanelViewController extends PanelViewController {
 
             // Can affect multi-user switcher visibility
             reInflateViews();
-            // To update forcing small clock on keyguard
-            positionClockAndNotifications();
         }
     }
 

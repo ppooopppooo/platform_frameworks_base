@@ -198,7 +198,6 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.internal.app.IVoiceInteractor;
 import com.android.internal.content.ReferrerIntent;
-import com.android.internal.gmscompat.GmsHooks;
 import com.android.internal.os.BinderInternal;
 import com.android.internal.os.RuntimeInit;
 import com.android.internal.os.SomeArgs;
@@ -4552,7 +4551,6 @@ public final class ActivityThread extends ClientTransactionHandler
             context.setOuterContext(service);
             service.attach(context, this, data.info.name, data.token, app,
                     ActivityManager.getService());
-            GmsHooks.attachService(service);
             service.onCreate();
             mServicesData.put(data.token, data);
             mServices.put(data.token, service);
@@ -7016,7 +7014,13 @@ public final class ActivityThread extends ClientTransactionHandler
                 // local, we'll need to wait for the publishing of the provider.
                 if (holder != null && holder.provider == null && !holder.mLocal) {
                     synchronized (key.mLock) {
-                        key.mLock.wait(ContentResolver.CONTENT_PROVIDER_READY_TIMEOUT_MILLIS);
+                        if (key.mHolder != null) {
+                            if (DEBUG_PROVIDER) {
+                                Slog.i(TAG, "already received provider: " + auth);
+                            }
+                        } else {
+                            key.mLock.wait(ContentResolver.CONTENT_PROVIDER_READY_TIMEOUT_MILLIS);
+                        }
                         holder = key.mHolder;
                     }
                     if (holder != null && holder.provider == null) {

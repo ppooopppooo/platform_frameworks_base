@@ -68,9 +68,7 @@ import com.android.internal.util.hwkeys.ActionUtils;
 import com.android.internal.util.syberia.SyberiaUtils;
 import com.android.internal.config.sysui.SystemUiDeviceConfigFlags;
 import com.android.internal.policy.GestureNavigationSettingsObserver;
-import com.android.systemui.Dependency;
 import com.android.systemui.R;
-import com.android.systemui.assist.AssistManager;
 import com.android.systemui.SystemUIFactory;
 import com.android.systemui.broadcast.BroadcastDispatcher;
 import com.android.systemui.dagger.qualifiers.Main;
@@ -236,7 +234,6 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
     private boolean mInRejectedExclusion = false;
     private boolean mIsOnLeftEdge;
 
-    private AssistManager mAssistManager;
     private int mTimeout = 2000; //ms
     private int mLeftLongSwipeAction;
     private int mRightLongSwipeAction;
@@ -276,6 +273,9 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
     private float mMLModelThreshold;
     private String mPackageName;
     private float mMLResults;
+
+
+    private boolean mIsBackGestureArrowEnabled;
 
     // For debugging
     private LogArray mPredictionLog = new LogArray(MAX_NUM_LOGGED_PREDICTIONS);
@@ -378,7 +378,6 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
                 mContext.getMainThreadHandler(), mContext, this::onNavigationSettingsChanged);
 
         mHandler = new Handler();
-        mAssistManager = Dependency.get(AssistManager.class);
         updateCurrentUserResources();
     }
 
@@ -415,6 +414,7 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
         mEdgeHapticEnabled = mGestureNavigationSettingsObserver.getEdgeHaptic();
         mIsBackGestureAllowed =
                 !mGestureNavigationSettingsObserver.areNavigationButtonForcedVisible();
+        mIsBackGestureArrowEnabled = mGestureNavigationSettingsObserver.getBackArrowGesture();
 
         mTimeout = mGestureNavigationSettingsObserver.getLongSwipeTimeOut();
         mLeftLongSwipeAction = mGestureNavigationSettingsObserver.getLeftLongSwipeAction();
@@ -871,6 +871,7 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
                     && isWithinTouchRegion((int) ev.getX(), (int) ev.getY());
             if (mAllowGesture) {
                 mEdgeBackPlugin.setIsLeftPanel(mIsOnLeftEdge);
+                mEdgeBackPlugin.setBackArrowVisibility(mIsBackGestureArrowEnabled);
                 mEdgeBackPlugin.onMotionEvent(ev);
             }
             if (mLogGesture) {
@@ -1017,8 +1018,7 @@ public class EdgeBackGestureHandler extends CurrentUserTracker
             case 0: // No action
             default:
                 break;
-            case 1: // Assistant
-                mAssistManager.startAssist(new Bundle() /* args */);
+            case 1:
                 break;
             case 2: // Voice search
                 ActionUtils.launchVoiceSearch(mContext);

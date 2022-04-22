@@ -10379,7 +10379,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             "Native",
             "System", "Persistent", "Persistent Service", "Foreground",
             "Visible", "Perceptible", "Perceptible Low", "Perceptible Medium",
-            "Heavy Weight", "Backup",
+            "Backup", "Heavy Weight",
             "A Services", "Home",
             "Previous", "B Services", "Cached"
     };
@@ -10387,7 +10387,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             "native",
             "sys", "pers", "persvc", "fore",
             "vis", "percept", "perceptl", "perceptm",
-            "heavy", "backup",
+            "backup", "heavy",
             "servicea", "home",
             "prev", "serviceb", "cached"
     };
@@ -11964,10 +11964,6 @@ public class ActivityManagerService extends IActivityManager.Stub
 
     boolean isSingleton(String componentProcessName, ApplicationInfo aInfo,
             String className, int flags) {
-        if (GmsCompat.isGmsApp(aInfo)) {
-            return false;
-        }
-
         boolean result = false;
         // For apps that don't have pre-defined UIDs, check for permission
         if (UserHandle.getAppId(aInfo.uid) >= FIRST_APPLICATION_UID) {
@@ -11975,6 +11971,10 @@ public class ActivityManagerService extends IActivityManager.Stub
                 if (ActivityManager.checkUidPermission(
                         INTERACT_ACROSS_USERS,
                         aInfo.uid) != PackageManager.PERMISSION_GRANTED) {
+                    if (GmsCompat.isGmsApp(aInfo)) {
+                        return false;
+                    }
+
                     ComponentName comp = new ComponentName(aInfo.packageName, className);
                     String msg = "Permission Denial: Component " + comp.flattenToShortString()
                             + " requests FLAG_SINGLE_USER, but app does not hold "

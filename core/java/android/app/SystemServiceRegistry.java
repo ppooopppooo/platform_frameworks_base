@@ -26,7 +26,6 @@ import android.app.admin.DevicePolicyManager;
 import android.app.admin.IDevicePolicyManager;
 import android.app.appsearch.AppSearchManagerFrameworkInitializer;
 import android.app.blob.BlobStoreManagerFrameworkInitializer;
-import android.app.compat.gms.GmsCompat;
 import android.app.contentsuggestions.ContentSuggestionsManager;
 import android.app.contentsuggestions.IContentSuggestionsManager;
 import android.app.job.JobSchedulerFrameworkInitializer;
@@ -1416,10 +1415,6 @@ public final class SystemServiceRegistry {
                     @Override
                     public AppIntegrityManager createService(ContextImpl ctx)
                             throws ServiceNotFoundException {
-                        if (GmsCompat.isEnabled()) {
-                            return new AppIntegrityManager(null);
-                        }
-
                         IBinder b = ServiceManager.getServiceOrThrow(Context.APP_INTEGRITY_SERVICE);
                         return new AppIntegrityManager(IAppIntegrityManager.Stub.asInterface(b));
                     }});
@@ -1484,6 +1479,17 @@ public final class SystemServiceRegistry {
                     @Override
                     public DisplayHashManager createService(ContextImpl ctx) {
                         return new DisplayHashManager();
+                    }});
+
+        registerService(Context.APP_LOCK_SERVICE, AppLockManager.class,
+                new CachedServiceFetcher<AppLockManager>() {
+                    @Override
+                    public AppLockManager createService(ContextImpl ctx)
+                            throws ServiceNotFoundException {
+                        IBinder binder = ServiceManager.getServiceOrThrow(
+                                Context.APP_LOCK_SERVICE);
+                        return new AppLockManager(ctx,
+                            IAppLockManagerService.Stub.asInterface(binder));
                     }});
 
         sInitializing = true;

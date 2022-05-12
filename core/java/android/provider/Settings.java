@@ -37,7 +37,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.SearchManager;
 import android.app.WallpaperManager;
-import android.app.compat.gms.GmsCompat;
 import android.compat.annotation.UnsupportedAppUsage;
 import android.content.ComponentName;
 import android.content.ContentResolver;
@@ -2851,10 +2850,6 @@ public final class Settings {
         public boolean putStringForUser(ContentResolver cr, String name, String value,
                 String tag, boolean makeDefault, final int userHandle,
                 boolean overrideableByRestore) {
-            if (GmsCompat.isEnabled()) {
-                return true;
-            }
-
             try {
                 Bundle arg = new Bundle();
                 arg.putString(Settings.NameValueTable.VALUE, value);
@@ -6251,6 +6246,12 @@ public final class Settings {
          */
         public static final String FP_WAKE_UNLOCK = "fp_wake_unlock";
 
+
+        /**
+         * Whether to enable taskbar.
+         * @hide
+         */
+        public static final String ENABLE_TASKBAR = "enable_taskbar";
 
         /**
          * IMPORTANT: If you add a new public settings you also have to add it to

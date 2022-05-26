@@ -349,7 +349,6 @@ import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.DumpUtils;
 import com.android.internal.util.FastPrintWriter;
 import com.android.internal.util.FrameworkStatsLog;
-import com.android.internal.util.GamingModeHelper;
 import com.android.internal.util.MemInfoReader;
 import com.android.internal.util.Preconditions;
 import com.android.internal.util.function.DecFunction;
@@ -1793,9 +1792,6 @@ public class ActivityManagerService extends IActivityManager.Stub
                     synchronized (ActivityManagerService.this) {
                         ((ContentProviderRecord) msg.obj).onProviderPublishStatusLocked(false);
                     }
-                } break;
-                case GamingModeHelper.MSG_SEND_GAMING_MODE_BROADCAST: {
-                    mContext.sendBroadcastAsUser((Intent) msg.obj, UserHandle.CURRENT_OR_SELF);
                 } break;
             }
         }
@@ -7562,7 +7558,6 @@ public class ActivityManagerService extends IActivityManager.Stub
             mLocalDeviceIdleController =
                     LocalServices.getService(DeviceIdleInternal.class);
             mActivityTaskManager.onSystemReady();
-            mActivityTaskManager.mGamingModeHelper = new GamingModeHelper(mContext, mHandler);
             // Make sure we have the current profile info, since it is needed for security checks.
             mUserController.onSystemReady();
             mAppOpsService.systemReady();
@@ -8409,7 +8404,14 @@ public class ActivityManagerService extends IActivityManager.Stub
                     }
                 }
 
-                dbox.addText(dropboxTag, sb.toString());
+                //toString() of StringBuilder need to create a array copy with count,
+                //if no more memory could be made available by the garbage collector,
+                //"free list large object space" maybe oom.
+                try {
+                    dbox.addText(dropboxTag, sb.toString());
+                } catch (OutOfMemoryError e) {
+                    Slog.e(TAG, "Error writing string for count:" + sb.length(), e);
+                }
             }
         };
 

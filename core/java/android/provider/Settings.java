@@ -5231,6 +5231,20 @@ public final class Settings {
         public static final String POINTER_SPEED = "pointer_speed";
 
         /**
+         * GameSpace: List of added games by user
+         * @hide
+         */
+        @Readable
+        public static final String GAMESPACE_GAME_LIST = "gamespace_game_list";
+
+        /**
+         * GameSpace: Whether fullscreen intent will be suppressed while in game session
+         * @hide
+         */
+        @Readable
+        public static final String GAMESPACE_SUPPRESS_FULLSCREEN_INTENT = "gamespace_suppress_fullscreen_intent";
+
+        /**
          * Whether lock-to-app will be triggered by long-press on recents.
          * @hide
          */
@@ -5938,52 +5952,6 @@ public final class Settings {
          * @hide
          */
         public static final String INCREASING_RING_RAMP_UP_TIME = "increasing_ring_ramp_up_time";
-
-        /**
-         * Setting to enable/disable gaming mode
-         * @hide
-         */
-        @Readable
-        public static final String GAMING_MODE_ENABLED = "gaming_mode_enabled";
-
-        /**
-         * 0 - user is not in gaming mode
-         * 1 - user is in gaming mode
-         * @hide
-         */
-        @Readable
-        public static final String GAMING_MODE_ACTIVE = "gaming_mode_active";
-
-        /**
-         * Dynamically identify the top application and add it to the list
-         * @hide
-         */
-        @Readable
-        public static final String GAMING_MODE_DYNAMIC_ADD = "gaming_mode_dynamic_add";
-
-        /**
-         * @hide
-         */
-        @Readable
-        public static final String GAMING_MODE_APP_LIST = "gaming_mode_app_list";
-
-        /**
-         * Whether to disable notification heads-up or bubble in gaming mode.
-         * Default 1
-         *
-         * @hide
-         */
-
-        @Readable
-        public static final String GAMING_MODE_DISABLE_NOTIFICATION_ALERT = "gaming_mode_disable_notification_alert";
-
-        /**
-         * Whether to disable adb while in gaming mode.
-         * Default 0
-         *
-         * @hide
-         */
-        public static final String GAMING_MODE_DISABLE_ADB = "gaming_mode_disable_adb";
 
         /**
          * Adaptive playback

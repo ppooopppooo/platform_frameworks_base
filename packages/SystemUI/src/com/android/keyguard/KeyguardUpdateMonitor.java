@@ -1236,6 +1236,21 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
         return fingerprintAllowed || faceAllowed;
     }
 
+    /**
+     * Returns whether the user is unlocked with a biometric that is currently bypassing
+     * the lock screen.
+     */
+    public boolean getUserUnlockedWithBiometricAndIsBypassing(int userId) {
+        BiometricAuthenticated fingerprint = mUserFingerprintAuthenticated.get(userId);
+        BiometricAuthenticated face = mUserFaceAuthenticated.get(userId);
+        // fingerprint always bypasses
+        boolean fingerprintAllowed = fingerprint != null && fingerprint.mAuthenticated
+                && isUnlockingWithBiometricAllowed(fingerprint.mIsStrongBiometric);
+        boolean faceAllowed = face != null && face.mAuthenticated
+                && isUnlockingWithBiometricAllowed(face.mIsStrongBiometric);
+        return fingerprintAllowed || faceAllowed && mKeyguardBypassController.canBypass();
+    }
+
     public boolean getUserTrustIsManaged(int userId) {
         return mUserTrustIsManaged.get(userId) && !isTrustDisabled(userId);
     }
@@ -2006,7 +2021,7 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
         // Take a guess at initial SIM state, battery status and PLMN until we get an update
         mBatteryStatus = new BatteryStatus(BATTERY_STATUS_UNKNOWN,
-                100, 0, 0, 0, true, 0, 0, 0, false);
+                100, 0, 0, 0, true, 0, 0, 0, false, false);
 
         // Watch for interesting updates
         final IntentFilter filter = new IntentFilter();
@@ -3172,6 +3187,11 @@ public class KeyguardUpdateMonitor implements TrustManager.TrustListener, Dumpab
 
         // change in dash charging while plugged in
         if (nowPluggedIn && current.dashChargeStatus != old.dashChargeStatus) {
+            return true;
+        }
+
+        // change in warp charging while plugged in
+        if (nowPluggedIn && current.warpChargeStatus != old.warpChargeStatus) {
             return true;
         }
 

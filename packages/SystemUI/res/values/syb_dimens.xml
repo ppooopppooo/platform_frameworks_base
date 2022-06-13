@@ -48,6 +48,9 @@
     <dimen name="right_tri_state_up_top_left_radius">24.0dip</dimen>
     <dimen name="right_tri_state_up_top_right_radius">24.0dip</dimen>
 
+    <!-- Network traffic -->
+    <dimen name="network_traffic_width">25sp</dimen>
+
     <!-- Power Menu Lite: drawable padding -->
     <dimen name="global_actions_light_icon_padding">32dp</dimen>
 
@@ -76,4 +79,5 @@
 
     <!-- Width of the landscape battery icon in the status bar. -->
     <dimen name="status_bar_battery_icon_width_landscape">20dp</dimen>
+
 </resources>

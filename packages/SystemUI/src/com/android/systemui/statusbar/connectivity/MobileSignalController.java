@@ -136,8 +136,9 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
     // VoWiFi Icon Style
     private int mVoWiFistyle;
 
+    private boolean mDataDisabledIcon;
     private boolean mIsVowifiAvailable;
-
+    private boolean mRoamingIconAllowed;
     private final MobileStatusTracker.Callback mMobileCallback =
             new MobileStatusTracker.Callback() {
                 private String mLastStatus;
@@ -328,6 +329,12 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
             resolver.registerContentObserver(
                     Settings.System.getUriFor(Settings.System.VOWIFI_ICON_STYLE), false,
                     this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.DATA_DISABLED_ICON), false,
+                    this, UserHandle.USER_ALL);
+            resolver.registerContentObserver(
+                    Settings.System.getUriFor(Settings.System.ROAMING_INDICATOR_ICON), false,
+                    this, UserHandle.USER_ALL);
             updateSettings();
         }
 
@@ -354,6 +361,12 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
         mVoWiFistyle = Settings.System.getIntForUser(resolver,
                 Settings.System.VOWIFI_ICON_STYLE, 0,
                 UserHandle.USER_CURRENT);
+        mDataDisabledIcon = Settings.System.getIntForUser(resolver,
+                Settings.System.DATA_DISABLED_ICON, 1,
+                UserHandle.USER_CURRENT) == 1;
+        mRoamingIconAllowed = Settings.System.getIntForUser(resolver,
+                Settings.System.ROAMING_INDICATOR_ICON, 1,
+                UserHandle.USER_CURRENT) == 1;
         mConfig = Config.readConfig(mContext);
         setConfiguration(mConfig);
         notifyListeners();
@@ -537,6 +550,51 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
                 case 10:
                     resId = R.drawable.ic_volte_vivo;
                     break;
+				case 11:
+                    resId = R.drawable.ic_volte_emui;
+                    break;
+                case 12:
+                    resId = R.drawable.ic_volte_aris;
+                    break;
+                 case 13:
+                    resId = R.drawable.ic_volte_beast;
+                    break;
+                case 14:
+                    resId = R.drawable.ic_volte_ios;
+                    break;
+                 case 15:
+                    resId = R.drawable.ic_volte_lr;
+                    break;
+                case 16:
+                    resId = R.drawable.ic_volte_realme;
+                    break;
+                 case 17:
+                    resId = R.drawable.ic_volte_typeA;
+                    break;
+                case 18:
+                    resId = R.drawable.ic_volte_typeB;
+                    break;
+                 case 19:
+                    resId = R.drawable.ic_volte_typeC;
+                    break;
+                case 20:
+                    resId = R.drawable.ic_volte_typeD;
+                    break;
+                case 21:
+                    resId = R.drawable.ic_volte_typeE;
+                    break;
+                 case 22:
+                    resId = R.drawable.ic_volte_vcircle;
+                    break;
+                 case 23:
+                    resId = R.drawable.ic_volte_vimeo;
+                    break;
+                case 24:
+                    resId = R.drawable.ic_volte_volit;
+                    break;
+                case 25:
+                    resId = R.drawable.ic_volte_zirco;
+                    break; 
                 case 0:
                 default:
                     resId = R.drawable.ic_volte;
@@ -640,7 +698,8 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
                 mSubscriptionInfo.getSubscriptionId(),
                 mCurrentState.roaming,
                 sbInfo.showTriangle,
-                volteId);
+                volteId,
+                mCurrentState.isDefault);
         callback.setMobileDataIndicators(mobileDataIndicators);
     }
 
@@ -649,10 +708,8 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
         IconState qsIcon = null;
         CharSequence qsDescription = null;
 
-        boolean pm = mProviderModelSetting || mProviderModelBehavior;
         if (mCurrentState.dataSim) {
-            // If using provider model behavior, only show QS icons if the state is also default
-            if (pm && !mCurrentState.isDefault) {
+            if (mProviderModelBehavior) {
                 return new QsInfo(qsTypeIcon, qsIcon, qsDescription);
             }
 
@@ -1008,10 +1065,10 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
         }
         mCurrentState.dataConnected = mCurrentState.isDataConnected();
 
-        mCurrentState.roaming = isRoaming();
+        mCurrentState.roaming = isRoaming() && mRoamingIconAllowed;
         if (isCarrierNetworkChangeActive()) {
             mCurrentState.iconGroup = TelephonyIcons.CARRIER_NETWORK_CHANGE;
-        } else if (isDataDisabled() && !mConfig.alwaysShowDataRatIcon) {
+        } else if (isDataDisabled() && mDataDisabledIcon/*!mConfig.alwaysShowDataRatIcon*/) {
             if (mSubscriptionInfo.getSubscriptionId() != mDefaults.getDefaultDataSubId()) {
                 mCurrentState.iconGroup = TelephonyIcons.NOT_DEFAULT_DATA;
             } else {

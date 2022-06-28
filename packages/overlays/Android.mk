@@ -36,32 +36,30 @@ LOCAL_REQUIRED_MODULES := \
 	FontNotoSerifSourceOverlay \
 	IconPackCircularAndroidOverlay \
 	IconPackCircularLauncherOverlay \
-	IconPackCircularSettingsOverlay \
 	IconPackCircularSystemUIOverlay \
 	IconPackCircularThemePickerOverlay \
+        IconPackPUIAndroidOverlay \
+        IconPackPUILauncherOverlay \
+        IconPackPUISystemUIOverlay \
+        IconPackPUIThemePickerOverlay \
 	IconPackVictorAndroidOverlay \
 	IconPackVictorLauncherOverlay \
-	IconPackVictorSettingsOverlay \
 	IconPackVictorSystemUIOverlay \
 	IconPackVictorThemePickerOverlay \
 	IconPackSamAndroidOverlay \
 	IconPackSamLauncherOverlay \
-	IconPackSamSettingsOverlay \
 	IconPackSamSystemUIOverlay \
 	IconPackSamThemePickerOverlay \
 	IconPackKaiAndroidOverlay \
 	IconPackKaiLauncherOverlay \
-	IconPackKaiSettingsOverlay \
 	IconPackKaiSystemUIOverlay \
 	IconPackKaiThemePickerOverlay \
 	IconPackFilledAndroidOverlay \
 	IconPackFilledLauncherOverlay \
-	IconPackFilledSettingsOverlay \
 	IconPackFilledSystemUIOverlay \
 	IconPackFilledThemePickerOverlay \
 	IconPackRoundedAndroidOverlay \
 	IconPackRoundedLauncherOverlay \
-	IconPackRoundedSettingsOverlay \
 	IconPackRoundedSystemUIOverlay \
 	IconPackRoundedThemePickerOverlay \
 	FontOneplusSlateSource \
@@ -88,6 +86,31 @@ LOCAL_REQUIRED_MODULES := \
 	FontTaurusSourceOverlay \
 	FontTechnicalSourceOverlay \
 	FontMontserratSourceOverlay \
+        IconPackOOSAndroidOverlay \
+        IconPackOOSLauncherOverlay \
+        IconPackOOSSystemUIOverlay \
+        IconPackOOSThemePickerOverlay \
+        IconPackOutlineAndroidOverlay \
+        IconPackOutlineSystemUIOverlay \
+        IconPackAcherusAndroidOverlay \
+        IconPackAcherusSystemUIOverlay \
+        IconShapeCloudyOverlay \
+        IconShapeCylinderOverlay \
+        IconShapeFlowerOverlay \
+        IconShapeHeartOverlay \
+        IconShapeHexagonOverlay \
+        IconShapeLeafOverlay \
+        IconShapePebbleOverlay \
+        IconShapeRoundedHexagonOverlay \
+        IconShapeRoundedRectOverlay \
+        IconShapeSquareOverlay \
+        IconShapeSquircleOverlay \
+        IconShapeStretchedOverlay \
+        IconShapeTaperedRectOverlay \
+        IconShapeTeardropOverlay \
+        IconShapeVesselOverlay \
+        IconPackDoraAndroidOverlay \
+        IconPackDoraSystemUIOverlay \
 	NavigationBarMode3ButtonOverlay \
 	NavigationBarMode2ButtonOverlay \
 	NavigationBarModeGesturalOverlay \

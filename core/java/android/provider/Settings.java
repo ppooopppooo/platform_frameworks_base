@@ -5423,6 +5423,30 @@ public final class Settings {
         public static final String WFD_LEGACY_VIDEO_MODE = "wfd_legacy_video_mode";
 
         /**
+         * Enable and disable Artwork on background media notification
+         * @hide
+         */
+        public static final String ARTWORK_MEDIA_BACKGROUND = "artwork_media_background";
+
+        /**
+         * Whether to enable artwork blur
+         * @hide
+         */
+        public static final String ARTWORK_MEDIA_BACKGROUND_ENABLE_BLUR = "artwork_media_background_enable_blur";
+
+        /**
+         * Adjust blur radius for background media
+         * @hide
+         */
+        public static final String ARTWORK_MEDIA_BACKGROUND_BLUR_RADIUS = "artwork_media_background_blur_radius";
+
+        /**
+         * Adjust alpha for background media
+         * @hide
+         */
+        public static final String ARTWORK_MEDIA_BACKGROUND_ALPHA = "artwork_media_background_alpha";
+
+        /**
          * Double tap on lockscreen to sleep
          * @hide
          */
@@ -6222,11 +6246,70 @@ public final class Settings {
         public static final String ENABLE_TASKBAR = "enable_taskbar";
 
         /**
+         * reTicker Status
+         * @hide
+         */
+        @Readable
+        public static final String RETICKER_STATUS = "reticker_status";
+
+        /**
+         * reTicker Colored
+         * @hide
+         */
+        @Readable
+        public static final String RETICKER_COLORED = "reticker_colored";
+
+        /**
          * IMPORTANT: If you add a new public settings you also have to add it to
          * PUBLIC_SETTINGS below. If the new setting is hidden you have to add
          * it to PRIVATE_SETTINGS below. Also add a validator that can validate
          * the setting value. See an example above.
          */
+
+        /**
+         * Whether to display cross sign for a data disabled connection
+         * @hide
+         */
+        public static final String DATA_DISABLED_ICON = "data_disabled_icon";
+
+        /**
+         * @hide
+         */
+        public static final String ROAMING_INDICATOR_ICON = "roaming_indicator_icon";
+
+        /**
+         * Use doubletap as doze pulse triggers
+         * @hide
+         */
+        public static final String DOZE_TRIGGER_DOUBLETAP = "doze_trigger_doubletap";
+
+        /**
+         * Whether to show IME space
+         * @hide
+         */
+        public static final String NAVIGATION_BAR_IME_SPACE = "navigation_bar_ime_space";
+
+        /**
+         * Whether to show material Dismiss All Button for notifications
+         * @hide
+         */
+        public static final String NOTIFICATION_MATERIAL_DISMISS = "notification_material_dismiss";
+
+        /**
+         * @hide
+         */
+        public static final String NOTIFICATION_MATERIAL_DISMISS_STYLE = "notification_material_dismiss_style";
+
+        /**
+         * @hide
+         */
+        public static final String NOTIFICATION_MATERIAL_DISMISS_BGSTYLE = "notification_material_dismiss_bgstyle";
+
+        /**
+         * Whether to show data usage in qs footer
+         * @hide
+         */
+        public static final String QS_FOOTER_DATA_USAGE = "qs_footer_data_usage";
 
         /**
          * Keys we no longer back up under the current schema, but want to continue to
@@ -6239,6 +6322,12 @@ public final class Settings {
          */
         public static final String[] LEGACY_RESTORE_SETTINGS = {
         };
+
+	/**
+         * Force full screen for devices with cutout
+         * @hide
+         */
+        public static final String FORCE_FULLSCREEN_CUTOUT_APPS = "force_full_screen_cutout_apps";
 
         /**
          * These are all public system settings
@@ -6397,6 +6486,7 @@ public final class Settings {
             PRIVATE_SETTINGS.add(VIBRATE_ON_CALLWAITING);
             PRIVATE_SETTINGS.add(VIBRATE_ON_DISCONNECT);
             PRIVATE_SETTINGS.add(FP_WAKE_UNLOCK);
+            PRIVATE_SETTINGS.add(FORCE_FULLSCREEN_CUTOUT_APPS);
         }
 
         /**

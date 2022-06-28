@@ -76,6 +76,20 @@ class OngoingPrivacyChip @JvmOverloads constructor(
         } else {
             iconsContainer.removeAllViews()
         }
+
+        if(privacyList.size >= 2){
+            val params = iconsContainer.getLayoutParams() as LayoutParams;
+            params.height = context.resources
+            .getDimensionPixelSize(R.dimen.ongoing_appops_chip_height);
+            params.width = context.resources
+            .getDimensionPixelSize(R.dimen.ongoing_appops_chip_2_width);
+            var padding = context.resources
+            .getDimensionPixelSize(R.dimen.ongoing_appops_chip_main_padding);
+
+            iconsContainer.setLayoutParams(params);
+            iconsContainer.setPadding(padding, 0, padding, 0);
+        }
+
         requestLayout()
     }
 
@@ -90,8 +104,8 @@ class OngoingPrivacyChip @JvmOverloads constructor(
                 .getDimensionPixelSize(R.dimen.ongoing_appops_chip_icon_margin)
         iconSize = context.resources
                 .getDimensionPixelSize(R.dimen.ongoing_appops_chip_icon_size)
-        iconColor = context.resources
-                .getColor(android.R.color.system_neutral1_900)
+        iconColor =
+                Utils.getColorAttrDefaultColor(context, android.R.attr.textColorPrimaryInverse)
 
         val padding = context.resources
                 .getDimensionPixelSize(R.dimen.ongoing_appops_chip_side_padding)

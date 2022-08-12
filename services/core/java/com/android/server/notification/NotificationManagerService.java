@@ -1084,7 +1084,9 @@ public class NotificationManagerService extends SystemService {
                 cancelNotification(callingUid, callingPid, sbn.getPackageName(), sbn.getTag(),
                         sbn.getId(), Notification.FLAG_AUTO_CANCEL,
                         FLAG_FOREGROUND_SERVICE | FLAG_BUBBLE, false, r.getUserId(),
-                        REASON_CLICK, nv.rank, nv.count, null);
+                        REASON_CLICK, nv.rank, nv.count, null,
+                        NotificationStats.DISMISSAL_NOT_DISMISSED,
+                        NotificationStats.DISMISS_SENTIMENT_UNKNOWN);
                 nv.recycle();
                 reportUserInteraction(r);
                 mAssistants.notifyAssistantNotificationClicked(r);
@@ -1139,15 +1141,14 @@ public class NotificationManagerService extends SystemService {
             synchronized (mNotificationLock) {
                 NotificationRecord r = mNotificationsByKey.get(key);
                 if (r != null) {
-                    r.recordDismissalSurface(dismissalSurface);
-                    r.recordDismissalSentiment(dismissalSentiment);
                     tag = r.getSbn().getTag();
                     id = r.getSbn().getId();
                 }
             }
             cancelNotification(callingUid, callingPid, pkg, tag, id, 0,
                     FLAG_ONGOING_EVENT | FLAG_FOREGROUND_SERVICE,
-                    true, userId, REASON_CANCEL, nv.rank, nv.count,null);
+                    true, userId, REASON_CANCEL, nv.rank, nv.count,null,
+                    dismissalSurface, dismissalSentiment);
             nv.recycle();
         }
 
@@ -6823,12 +6824,16 @@ public class NotificationManagerService extends SystemService {
         private final int mRank;
         private final int mCount;
         private final ManagedServiceInfo mListener;
+        private final @NotificationStats.DismissalSurface int mDismissalSurface;
+        private final @NotificationStats.DismissalSentiment int mDismissalSentiment;
 
         CancelNotificationRunnable(final int callingUid, final int callingPid,
                 final String pkg, final String tag, final int id,
                 final int mustHaveFlags, final int mustNotHaveFlags, final boolean sendDelete,
                 final int userId, final int reason, int rank, int count,
-                final ManagedServiceInfo listener) {
+                final ManagedServiceInfo listener,
+                final @NotificationStats.DismissalSurface int dismissalSurface,
+                final @NotificationStats.DismissalSentiment int dismissalSentiment) {
             this.mCallingUid = callingUid;
             this.mCallingPid = callingPid;
             this.mPkg = pkg;
@@ -6842,6 +6847,8 @@ public class NotificationManagerService extends SystemService {
             this.mRank = rank;
             this.mCount = count;
             this.mListener = listener;
+            this.mDismissalSurface = dismissalSurface;
+            this.mDismissalSentiment = dismissalSentiment;
         }
 
         @Override
@@ -6895,6 +6902,9 @@ public class NotificationManagerService extends SystemService {
                             return true;
                         };
                     }
+
+                    r.recordDismissalSurface(mDismissalSurface);
+                    r.recordDismissalSentiment(mDismissalSentiment);
 
                     // Cancel the notification.
                     boolean wasPosted = removeFromNotificationListsLocked(r);
@@ -8766,7 +8776,9 @@ public class NotificationManagerService extends SystemService {
             final int mustHaveFlags, final int mustNotHaveFlags, final boolean sendDelete,
             final int userId, final int reason, final ManagedServiceInfo listener) {
         cancelNotification(callingUid, callingPid, pkg, tag, id, mustHaveFlags, mustNotHaveFlags,
-                sendDelete, userId, reason, -1 /* rank */, -1 /* count */, listener);
+                sendDelete, userId, reason, -1 /* rank */, -1 /* count */, listener,
+                NotificationStats.DISMISSAL_NOT_DISMISSED,
+                NotificationStats.DISMISS_SENTIMENT_UNKNOWN);
     }
 
     /**
@@ -8777,14 +8789,16 @@ public class NotificationManagerService extends SystemService {
             final String pkg, final String tag, final int id,
             final int mustHaveFlags, final int mustNotHaveFlags, final boolean sendDelete,
             final int userId, final int reason, int rank, int count,
-            final ManagedServiceInfo listener) {
+            final ManagedServiceInfo listener,
+            final @NotificationStats.DismissalSurface int dismissalSurface,
+            final @NotificationStats.DismissalSentiment int dismissalSentiment) {
         // In enqueueNotificationInternal notifications are added by scheduling the
         // work on the worker handler. Hence, we also schedule the cancel on this
         // handler to avoid a scenario where an add notification call followed by a
         // remove notification call ends up in not removing the notification.
         mHandler.scheduleCancelNotification(new CancelNotificationRunnable(callingUid, callingPid,
                 pkg, tag, id, mustHaveFlags, mustNotHaveFlags, sendDelete, userId, reason, rank,
-                count, listener));
+                count, listener, dismissalSurface, dismissalSentiment));
     }
 
     /**
@@ -9581,8 +9595,14 @@ public class NotificationManagerService extends SystemService {
      * given NAS is bound in.
      */
     private boolean isInteractionVisibleToListener(ManagedServiceInfo info, int userId) {
-        boolean isAssistantService = mAssistants.isServiceTokenValidLocked(info.service);
+        boolean isAssistantService = isServiceTokenValid(info.service);
         return !isAssistantService || info.isSameUser(userId);
+    }
+
+    private boolean isServiceTokenValid(IInterface service) {
+        synchronized (mNotificationLock) {
+            return mAssistants.isServiceTokenValidLocked(service);
+        }
     }
 
     private boolean isPackageSuspendedForUser(String pkg, int uid) {
@@ -10841,7 +10861,7 @@ public class NotificationManagerService extends SystemService {
                 BackgroundThread.getHandler().post(() -> {
                     if (info.isSystem
                             || hasCompanionDevice(info)
-                            || mAssistants.isServiceTokenValidLocked(info.service)) {
+                            || isServiceTokenValid(info.service)) {
                         notifyNotificationChannelChanged(
                                 info, pkg, user, channel, modificationType);
                     }

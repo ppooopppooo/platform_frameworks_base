@@ -51,6 +51,7 @@ import com.android.systemui.plugins.qs.QSTile;
 import com.android.systemui.settings.brightness.BrightnessSliderController;
 import com.android.systemui.statusbar.policy.BrightnessMirrorController;
 import com.android.systemui.util.animation.UniqueObjectHostView;
+import org.omnirom.omnilib.utils.OmniUtils;
 
 import java.lang.Runnable;
 import java.util.ArrayList;
@@ -105,7 +106,10 @@ public class QSPanel extends LinearLayout {
     private PageIndicator mFooterPageIndicator;
     private int mContentMarginStart;
     private int mContentMarginEnd;
-    private boolean mUsingHorizontalLayout;
+    private int mMaxColumnsPortrait;
+    private int mMaxColumnsLandscape;
+    private int mMaxColumnsMediaPlayer;
+    protected boolean mUsingHorizontalLayout;
 
     private Record mDetailRecord;
 
@@ -194,6 +198,10 @@ public class QSPanel extends LinearLayout {
         setOrientation(VERTICAL);
 
         mMovableContentStartIndex = getChildCount();
+        mMaxColumnsPortrait = Math.max(2, getResources().getInteger(R.integer.quick_qs_panel_num_columns));
+        mMaxColumnsPortrait = OmniUtils.getQSColumnsPortrait(mContext, mMaxColumnsPortrait);
+        mMaxColumnsLandscape = getResources().getInteger(R.integer.quick_qs_panel_num_columns_landscape);
+        mMaxColumnsMediaPlayer = getResources().getInteger(R.integer.quick_qs_panel_num_columns_media);
     }
 
     void initialize() {
@@ -456,6 +464,21 @@ public class QSPanel extends LinearLayout {
         super.onConfigurationChanged(newConfig);
         mOnConfigurationChangedListeners.forEach(
                 listener -> listener.onConfigurationChange(newConfig));
+	if (mTileLayout != null) {
+           updateColumns();
+       }
+    }
+
+    public void updateColumns() {
+	boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+	
+        int mColumnsMediaPlayer = mUsingHorizontalLayout ? 
+            mMaxColumnsMediaPlayer : 
+            mMaxColumnsLandscape;
+
+        mTileLayout.setMaxColumns(isLandscape ? 
+            mColumnsMediaPlayer : 
+            mMaxColumnsPortrait);
     }
 
     @Override
@@ -835,8 +858,15 @@ public class QSPanel extends LinearLayout {
             switchAllContentToParent(newParent, mTileLayout);
             reAttachMediaHost(mediaHostView, horizontal);
             if (needsDynamicRowsAndColumns()) {
-                mTileLayout.setMinRows(horizontal ? 2 : 1);
-                mTileLayout.setMaxColumns(horizontal ? 2 : 4);
+            	boolean isLandscape = mContext.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+                // even though there is already an exisiting horizontal check, lets make sure that 2 rows is only forced on portrait
+                if (!isLandscape && mTileLayout.getResourceColumnsPortrait() <= 3) {
+                    mTileLayout.setMinRows(horizontal ? 2 : 1);
+                } else {
+                   mTileLayout.setMinRows(horizontal ? 1 : 1);
+                }
+                updateColumns();
             }
             updateMargins(mediaHostView);
             if (mHorizontalLinearLayout == null) return;
@@ -930,6 +960,10 @@ public class QSPanel extends LinearLayout {
         default void setExpansion(float expansion, float proposedTranslation) {}
 
         int getNumVisibleTiles();
+
+        int getResourceColumnsPortrait();
+
+        void updateSettings();
     }
 
     interface OnConfigurationChangedListener {

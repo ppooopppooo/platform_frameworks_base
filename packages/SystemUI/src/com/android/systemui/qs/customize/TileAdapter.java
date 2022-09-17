@@ -17,6 +17,7 @@ package com.android.systemui.qs.customize;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.res.Resources;
+import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -54,6 +55,8 @@ import com.android.systemui.qs.external.CustomTile;
 import com.android.systemui.qs.tileimpl.QSIconViewImpl;
 import com.android.systemui.qs.tileimpl.QSTileViewImpl;
 
+import org.omnirom.omnilib.utils.OmniUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,7 +82,7 @@ public class TileAdapter extends RecyclerView.Adapter<Holder> implements TileSta
     private static final int ACTION_ADD = 1;
     private static final int ACTION_MOVE = 2;
 
-    private static final int NUM_COLUMNS_ID = R.integer.quick_settings_num_columns;
+    private static final int NUM_COLUMNS_ID = R.integer.qs_panel_num_columns;
 
     private final Context mContext;
 
@@ -119,7 +122,7 @@ public class TileAdapter extends RecyclerView.Adapter<Holder> implements TileSta
         mDecoration = new TileItemDecoration(context);
         mMarginDecoration = new MarginTileDecoration();
         mMinNumTiles = context.getResources().getInteger(R.integer.quick_settings_min_num_tiles);
-        mNumColumns = context.getResources().getInteger(NUM_COLUMNS_ID);
+        mNumColumns = 2;
         //mAccessibilityDelegate = new TileAdapterDelegate();
         mSizeLookup.setSpanIndexCacheEnabled(true);
     }
@@ -140,13 +143,7 @@ public class TileAdapter extends RecyclerView.Adapter<Holder> implements TileSta
      * @return {@code true} if the number of columns changed, {@code false} otherwise
      */
     public boolean updateNumColumns() {
-        int numColumns = mContext.getResources().getInteger(NUM_COLUMNS_ID);
-        if (numColumns != mNumColumns) {
-            mNumColumns = numColumns;
-            return true;
-        } else {
             return false;
-        }
     }
 
     public int getNumColumns() {
@@ -651,7 +648,7 @@ public class TileAdapter extends RecyclerView.Adapter<Holder> implements TileSta
         public int getSpanSize(int position) {
             final int type = getItemViewType(position);
             if (type == TYPE_EDIT || type == TYPE_DIVIDER || type == TYPE_HEADER) {
-                return mNumColumns;
+		return mNumColumns;
             } else {
                 return 1;
             }

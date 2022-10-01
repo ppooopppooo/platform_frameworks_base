@@ -112,7 +112,6 @@
 
   <!-- PropImitationHooks -->
   <java-symbol type="string" name="config_certifiedFingerprint" />
-  <java-symbol type="string" name="config_certifiedModel" />
   <java-symbol type="string" name="config_stockFingerprint" />
 
   <!-- App lock -->

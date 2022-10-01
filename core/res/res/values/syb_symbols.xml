@@ -110,10 +110,6 @@
   <java-symbol type="string" name="config_lightFontFamily" />
   <java-symbol type="string" name="config_regularFontFamily" />
 
-  <!-- PropImitationHooks -->
-  <java-symbol type="string" name="config_certifiedFingerprint" />
-  <java-symbol type="string" name="config_stockFingerprint" />
-
   <!-- App lock -->
   <java-symbol type="string" name="unlock_application" />
   <java-symbol type="array" name="config_appLockAllowedSystemApps" />

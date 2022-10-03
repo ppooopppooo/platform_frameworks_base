@@ -59,7 +59,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:contentDescription="@null"
-            android:scaleType="fitXY" />
+            android:scaleType="fitXY"
+            android:visibility="invisible" />
 
     </FrameLayout>
 

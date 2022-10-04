@@ -196,6 +196,9 @@
     <permission android:name="com.android.systemui.permission.FLAGS"
                 android:protectionLevel="signature" />
 
+    <permission android:name="com.android.systemui.permission.SCREEN_RECORDING"
+            android:protectionLevel="signature" />
+
     <!-- Adding Quick Settings tiles -->
     <uses-permission android:name="android.permission.BIND_QUICK_SETTINGS_TILE" />
 
@@ -334,6 +337,9 @@
 
     <uses-permission android:name="android.permission.SET_UNRESTRICTED_KEEP_CLEAR_AREAS" />
 
+    <!-- To broadcast status of the GameSpaceManager -->
+    <uses-permission android:name="android.permission.MANAGE_GAME_MODE" />
+
     <protected-broadcast android:name="com.android.settingslib.action.REGISTER_SLICE_RECEIVER" />
     <protected-broadcast android:name="com.android.settingslib.action.UNREGISTER_SLICE_RECEIVER" />
     <protected-broadcast android:name="com.android.settings.flashlight.action.FLASHLIGHT_CHANGED" />
@@ -426,7 +432,13 @@
                   android:label="@string/screenshot_scroll_label"
                   android:finishOnTaskLaunch="true" />
 
-        <service android:name=".screenrecord.RecordingService" />
+        <service android:name=".screenrecord.RecordingService"
+            android:exported="true"
+            android:permission="com.android.systemui.permission.SCREEN_RECORDING">
+            <intent-filter>
+                <action android:name="com.android.systemui.screenrecord.RecordingService" />
+            </intent-filter>
+        </service>
 
         <receiver android:name=".SysuiRestartReceiver"
             android:exported="false">

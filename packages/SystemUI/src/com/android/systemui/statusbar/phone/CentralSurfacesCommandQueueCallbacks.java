@@ -195,7 +195,7 @@ public class CentralSurfacesCommandQueueCallbacks implements CommandQueue.Callba
     public void remQsTile(ComponentName tile) {
         QSPanelController qsPanelController = mCentralSurfaces.getQSPanelController();
         if (qsPanelController != null && qsPanelController.getHost() != null) {
-            qsPanelController.getHost().removeTile(tile);
+            qsPanelController.getHost().removeTileByUser(tile);
         }
     }
 
@@ -575,6 +575,10 @@ public class CentralSurfacesCommandQueueCallbacks implements CommandQueue.Callba
         } else {
             animateExpandSettingsPanel(null);
         }
+    }
+
+    public void setBlockedGesturalNavigation(boolean blocked) {
+        mCentralSurfaces.setBlockedGesturalNavigation(blocked);
     }
 
     private boolean isGoingToSleep() {

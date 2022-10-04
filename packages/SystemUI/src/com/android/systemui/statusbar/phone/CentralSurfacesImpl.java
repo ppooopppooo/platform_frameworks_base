@@ -165,6 +165,7 @@ import com.android.systemui.keyguard.KeyguardUnlockAnimationController;
 import com.android.systemui.keyguard.KeyguardViewMediator;
 import com.android.systemui.keyguard.ScreenLifecycle;
 import com.android.systemui.keyguard.WakefulnessLifecycle;
+import com.android.systemui.model.SysUiState;
 import com.android.systemui.navigationbar.NavigationBarController;
 import com.android.systemui.navigationbar.NavigationBarView;
 import com.android.systemui.plugins.DarkIconDispatcher;
@@ -234,6 +235,7 @@ import com.android.systemui.statusbar.policy.ConfigurationController.Configurati
 import com.android.systemui.statusbar.policy.DeviceProvisionedController;
 import com.android.systemui.statusbar.policy.DeviceProvisionedController.DeviceProvisionedListener;
 import com.android.systemui.statusbar.policy.ExtensionController;
+import com.android.systemui.statusbar.policy.GameSpaceManager;
 import com.android.systemui.statusbar.policy.KeyguardStateController;
 import com.android.systemui.statusbar.policy.UserInfoControllerImpl;
 import com.android.systemui.statusbar.policy.UserSwitcherController;
@@ -512,6 +514,8 @@ public class CentralSurfacesImpl extends CoreStartable implements
     private final StatusBarSignalPolicy mStatusBarSignalPolicy;
     private final StatusBarHideIconsForBouncerManager mStatusBarHideIconsForBouncerManager;
 
+    protected GameSpaceManager mGameSpaceManager;
+
     // expanded notifications
     // the sliding/resizing panel within the notification window
     protected NotificationPanelViewController mNotificationPanelViewController;
@@ -684,6 +688,7 @@ public class CentralSurfacesImpl extends CoreStartable implements
 
     private final InteractionJankMonitor mJankMonitor;
 
+    private final SysUiState mSysUiState;
 
     /**
      * Public constructor for CentralSurfaces.
@@ -789,7 +794,8 @@ public class CentralSurfacesImpl extends CoreStartable implements
             DeviceStateManager deviceStateManager,
             DreamOverlayStateController dreamOverlayStateController,
             WiredChargingRippleController wiredChargingRippleController,
-            IDreamManager dreamManager) {
+            IDreamManager dreamManager,
+            SysUiState sysUiState) {
         super(context);
         mNotificationsController = notificationsController;
         mFragmentService = fragmentService;
@@ -876,6 +882,7 @@ public class CentralSurfacesImpl extends CoreStartable implements
         mWallpaperManager = wallpaperManager;
         mJankMonitor = jankMonitor;
         mDreamOverlayStateController = dreamOverlayStateController;
+        mSysUiState = sysUiState;
 
         mLockscreenShadeTransitionController = lockscreenShadeTransitionController;
         mStartingSurfaceOptional = startingSurfaceOptional;
@@ -896,6 +903,7 @@ public class CentralSurfacesImpl extends CoreStartable implements
 
         mActivityIntentHelper = new ActivityIntentHelper(mContext);
         mActivityLaunchAnimator = activityLaunchAnimator;
+        mGameSpaceManager = new GameSpaceManager(mContext, mKeyguardStateController);
 
         // The status bar background may need updating when the ongoing call status changes.
         mOngoingCallController.addCallback((animate) -> maybeUpdateBarMode());
@@ -1449,6 +1457,7 @@ public class CentralSurfacesImpl extends CoreStartable implements
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         mBroadcastDispatcher.registerReceiver(mBroadcastReceiver, filter, null, UserHandle.ALL);
+        mGameSpaceManager.observe();
     }
 
     protected QS createDefaultQSFragment() {
@@ -3726,6 +3735,18 @@ public class CentralSurfacesImpl extends CoreStartable implements
         public void onFinishedWakingUp() {
             mWakeUpCoordinator.setFullyAwake(true);
             mWakeUpCoordinator.setWakingUp(false);
+            if (mKeyguardStateController.isOccluded()
+                    && !mDozeParameters.canControlUnlockedScreenOff()) {
+                // When the keyguard is occluded we don't use the KEYGUARD state which would
+                // normally cause these redaction updates.  If AOD is on, the KEYGUARD state is used
+                // to show the doze, AND UnlockedScreenOffAnimationController.onFinishedWakingUp()
+                // would force a KEYGUARD state that would take care of recalculating redaction.
+                // So if AOD is off or unsupported we need to trigger these updates at screen on
+                // when the keyguard is occluded.
+                mLockscreenUserManager.updatePublicMode();
+                mNotificationPanelViewController.getNotificationStackScrollLayoutController()
+                        .updateSensitivenessForOccludedWakeup();
+            }
             if (mLaunchCameraWhenFinishedWaking) {
                 mNotificationPanelViewController.launchCamera(
                         false /* animate */, mLastCameraLaunchSource);
@@ -4076,6 +4097,17 @@ public class CentralSurfacesImpl extends CoreStartable implements
         KeyboardShortcuts.dismiss();
     }
 
+    @Override
+    public void setBlockedGesturalNavigation(boolean blocked) {
+        if (getNotificationPanelViewController() != null) {
+            getNotificationPanelViewController().setBlockedGesturalNavigation(blocked);
+            getNotificationPanelViewController().updateSystemUiStateFlags();
+        }
+        if (getNavigationBarView() != null) {
+            getNavigationBarView().setBlockedGesturalNavigation(blocked, mSysUiState);
+        }
+    }
+
     /**
      * Dismiss the keyguard then execute an action.
      *
@@ -4281,6 +4313,11 @@ public class CentralSurfacesImpl extends CoreStartable implements
     @Override
     public NotificationGutsManager getGutsManager() {
         return mGutsManager;
+    }
+
+    @Override
+    public GameSpaceManager getGameSpaceManager() {
+        return mGameSpaceManager;
     }
 
     boolean isTransientShown() {

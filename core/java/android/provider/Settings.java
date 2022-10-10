@@ -5984,20 +5984,12 @@ public final class Settings {
          * @hide
          */
         public static final String STATUS_BAR_BATTERY_TEXT_CHARGING = "status_bar_battery_text_charging";
-
-        /**
+		
+		/**
          * QS battery style
          * @hide
          */
         public static final String QS_BATTERY_STYLE = "qs_battery_style";
-
-        /**
-         * QS battery location
-         * 0: QS Panel
-         * 1: Quick Statusbar
-         * @hide
-         */
-        public static final String QS_BATTERY_LOCATION = "qs_battery_location";
 
         /**
          * QS battery %
@@ -6007,14 +5999,6 @@ public final class Settings {
          * @hide
          */
         public static final String QS_SHOW_BATTERY_PERCENT = "qs_show_battery_percent";
-
-        /**
-         * QS battery estimate
-         * 0: Hide the battery estimate
-         * 1: Display the battery estimate
-         * @hide
-         */
-        public static final String QS_SHOW_BATTERY_ESTIMATE = "qs_show_battery_estimate";
 
         /**
          * Whether the battery light should be enabled (if hardware supports it)

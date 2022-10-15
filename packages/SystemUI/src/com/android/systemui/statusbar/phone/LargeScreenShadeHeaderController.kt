@@ -23,6 +23,7 @@ import android.app.StatusBarManager
 import android.view.View
 import android.widget.TextView
 import androidx.constraintlayout.motion.widget.MotionLayout
+import android.provider.Settings
 import com.android.settingslib.Utils
 import com.android.systemui.Dumpable
 import com.android.systemui.FontSizeUtils
@@ -42,6 +43,7 @@ import com.android.systemui.statusbar.phone.dagger.StatusBarViewModule.LARGE_SCR
 import com.android.systemui.statusbar.phone.dagger.StatusBarViewModule.LARGE_SCREEN_SHADE_HEADER
 import com.android.systemui.statusbar.policy.Clock
 import com.android.systemui.statusbar.policy.ConfigurationController
+import com.android.systemui.tuner.TunerService
 import java.io.PrintWriter
 import javax.inject.Inject
 import javax.inject.Named
@@ -52,6 +54,7 @@ class LargeScreenShadeHeaderController @Inject constructor(
     private val statusBarIconController: StatusBarIconController,
     private val privacyIconsController: HeaderPrivacyIconsController,
     private val configurationController: ConfigurationController,
+    private val tunerService: TunerService,
     private val context: Context,
     qsCarrierGroupControllerBuilder: QSCarrierGroupController.Builder,
     featureFlags: FeatureFlags,
@@ -84,7 +87,15 @@ class LargeScreenShadeHeaderController @Inject constructor(
     private val date: TextView = header.findViewById(R.id.date)
     private val batteryIcon: BatteryMeterView = header.findViewById(R.id.batteryRemainingIcon)
     private val qsCarrierGroup: QSCarrierGroup = header.findViewById(R.id.carrier_group)
-
+    private var mStatusBarBatteryStyle = 0
+    private var mQSBatteryStyle = 0
+    private var mQSBatteryPercent = 0
+    public val QS_BATTERY_STYLE =
+            "system:" + Settings.System.QS_BATTERY_STYLE
+    public val QS_SHOW_BATTERY_PERCENT =
+            "system:" + Settings.System.QS_SHOW_BATTERY_PERCENT
+    public val STATUS_BAR_BATTERY_STYLE =
+            "system:" + Settings.System.STATUS_BAR_BATTERY_STYLE
     private var qsDisabled = false
 
     private var visible = false
@@ -170,7 +181,7 @@ class LargeScreenShadeHeaderController @Inject constructor(
 
         // battery settings same as in QS icons
         batteryMeterViewController.ignoreTunerUpdates()
-        batteryIcon.setPercentShowMode(BatteryMeterView.MODE_ESTIMATE)
+//         batteryIcon.setPercentShowMode(BatteryMeterView.MODE_ESTIMATE)
 
         iconContainer = header.findViewById(R.id.statusIcons)
         iconManager = StatusBarIconController.TintedIconManager(iconContainer, featureFlags)
@@ -201,6 +212,29 @@ class LargeScreenShadeHeaderController @Inject constructor(
         updateVisibility()
         updateConstraints()
         updateResources()
+
+        tunerService.addTunable(object : TunerService.Tunable {
+            override fun onTuningChanged(key: String?, newValue: String?) {
+                mStatusBarBatteryStyle =
+                        TunerService.parseInteger(newValue, 0)
+                updateBatteryStyle()
+            }
+        }, STATUS_BAR_BATTERY_STYLE)
+
+        tunerService.addTunable(object : TunerService.Tunable {
+            override fun onTuningChanged(key: String?, newValue: String?) {
+                mQSBatteryStyle = TunerService.parseInteger(newValue, -1)
+                updateBatteryStyle()
+            }
+        }, QS_BATTERY_STYLE)
+
+        tunerService.addTunable(object : TunerService.Tunable {
+            override fun onTuningChanged(key: String?, newValue: String?) {
+                mQSBatteryPercent = TunerService.parseInteger(newValue, 2)
+                updateBatteryPercent()
+            }
+        }, QS_SHOW_BATTERY_PERCENT)
+
     }
 
     private fun updateResources() {
@@ -336,4 +370,22 @@ class LargeScreenShadeHeaderController @Inject constructor(
             pw.println("currentState: ${header.currentState.stateToString()}")
         }
     }
+
+    private fun updateBatteryStyle() {
+        val style: Int
+        style = if (mQSBatteryStyle == -1) {
+            mStatusBarBatteryStyle
+        } else {
+            mQSBatteryStyle
+        }
+        batteryIcon.setBatteryStyle(style)
+    }
+
+
+    private fun updateBatteryPercent() {
+        val percent: Int
+        percent = mQSBatteryPercent
+        batteryIcon.setBatteryPercent(percent)
+    }
+
 }

@@ -339,11 +339,8 @@
 
     <!-- Allow IMS service entitlement app to schedule jobs to run when app in background. -->
     <allow-in-power-save-except-idle package="com.android.imsserviceentitlement" />
-
-    <allow-in-power-save package="com.google.android.gms"/>
     
     <!-- These components were repeatedly being suspended by the packagemanager, but cannot suspend due to privileges.-->
-    <allow-in-power-save-except-idle package="com.android.vending" />
     <allow-in-power-save-except-idle package="com.android.packageinstaller" />
     <allow-in-power-save-except-idle package="com.android.permissioncontroller" />
     <allow-in-power-save-except-idle package="com.android.launcher3" />

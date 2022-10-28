@@ -249,11 +249,11 @@ class LargeScreenShadeHeaderController @Inject constructor(
             if (iconManager != null) {
                 iconManager.setTint(textColor)
             }
-            clock.setTextColor(textColorPrimary)
             date.setTextColor(textColorPrimary)
             qsCarrierGroup.updateColors(textColorPrimary, colorStateList)
             batteryIcon.updateColors(textColorPrimary, textColorSecondary, textColorPrimary)
         }
+            clock.setTextColor(textColorPrimary)
     }
 
     fun disable(state1: Int, state2: Int, animate: Boolean) {

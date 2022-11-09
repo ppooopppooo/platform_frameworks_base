@@ -206,6 +206,7 @@ public class SecureSettings {
         Settings.Secure.LOCKSCREEN_USE_DOUBLE_LINE_CLOCK,
         Settings.Secure.STATUS_BAR_SHOW_VIBRATE_ICON,
         Settings.Secure.ADVANCED_REBOOT,
-        Settings.Secure.TETHERING_ALLOW_VPN_UPSTREAMS
+        Settings.Secure.TETHERING_ALLOW_VPN_UPSTREAMS,
+        Settings.Secure.QUICK_SETTINGS_TILES_VIBRATE
     };
 }

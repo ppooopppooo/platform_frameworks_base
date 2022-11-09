@@ -634,28 +634,31 @@
     <string name="fingerprint_recalibrate_notification_name" msgid="1414578431898579354">"Ukuvula ngesigxivizo somunwe"</string>
     <string name="fingerprint_recalibrate_notification_title" msgid="2406561052064558497">"Ayikwazi ukusebenzisa inzwa yesigxivizo somunwe"</string>
     <string name="fingerprint_recalibrate_notification_content" msgid="8519935717822194943">"Vakashela umhlinzeki wokulungisa."</string>
-    <string name="face_acquired_insufficient" msgid="2150805835949162453">"Ayikwazanga ukuthwebula idatha enembile yobuso. Zama futhi."</string>
+    <string name="face_acquired_insufficient" msgid="6889245852748492218">"Ayikwazi ukusungula imodeli yobuso bakho. Zama futhi."</string>
     <string name="face_acquired_too_bright" msgid="8070756048978079164">"Kukhanya kakhulu. Zama ukukhanya okuthambile."</string>
-    <string name="face_acquired_too_dark" msgid="252573548464426546">"Kumnyama kakhulu Zama ukukhanyisa okukhudlwana."</string>
-    <string name="face_acquired_too_close" msgid="1628767882971469833">"Hambisa ifoni kude."</string>
-    <string name="face_acquired_too_far" msgid="5098567726427173896">"Sondeza ifoni eduze."</string>
-    <string name="face_acquired_too_high" msgid="4868033653626081839">"Hambisa ifoni phezulu."</string>
-    <string name="face_acquired_too_low" msgid="1512237819632165945">"Hambisa ifoni ngaphansi."</string>
-    <string name="face_acquired_too_right" msgid="2513391513020932655">"Hambisa ifoni ngakwesokunxele."</string>
-    <string name="face_acquired_too_left" msgid="8882499346502714350">"Hambisa ifoni ngakwesokudla."</string>
+    <string name="face_acquired_too_dark" msgid="7919016380747701228">"Zama ukukhanyisa okukhudlwana"</string>
+    <string name="face_acquired_too_close" msgid="4453646176196302462">"Yisa ifoni kude"</string>
+    <string name="face_acquired_too_far" msgid="2922278214231064859">"Sondeza ifoni eduze"</string>
+    <string name="face_acquired_too_high" msgid="8278815780046368576">"Yisa ifoni phezulu"</string>
+    <string name="face_acquired_too_low" msgid="4075391872960840081">"Yisa ifoni phansi"</string>
+    <string name="face_acquired_too_right" msgid="6245286514593540859">"Yisa ifoni ngakwesokunxele sakho"</string>
+    <string name="face_acquired_too_left" msgid="9201762240918405486">"Yisa ifoni ngakwesokudla sakho"</string>
     <string name="face_acquired_poor_gaze" msgid="4427153558773628020">"Sicela ubheke ngokuqondile kakhulu kudivayisi yakho."</string>
-    <string name="face_acquired_not_detected" msgid="2945945257956443257">"Beka ubuso bakho ngqo phambi kwefoni."</string>
+    <string name="face_acquired_not_detected" msgid="1057966913397548150">"Ayikwazi ukubona ubuso bakho. Bamba ifoni yakho iqondane namehlo"</string>
     <string name="face_acquired_too_much_motion" msgid="8199691445085189528">"Ukunyakaza okuningi kakhulu. Bamba ifoni iqine."</string>
     <string name="face_acquired_recalibrate" msgid="8724013080976469746">"Sicela uphinde ubhalise ubuso bakho."</string>
-    <string name="face_acquired_too_different" msgid="4699657338753282542">"Ayisakwazi ukubona ubuso. Zama futhi."</string>
-    <string name="face_acquired_too_similar" msgid="7684650785108399370">"Kufana kakhulu, sicela ushintshe ukuma kwakho."</string>
-    <string name="face_acquired_pan_too_extreme" msgid="7822191262299152527">"Jikisa ikhanda lakho kancane."</string>
-    <string name="face_acquired_tilt_too_extreme" msgid="8618210742620248049">"Tshekisa kancane ikhanda lakho."</string>
-    <string name="face_acquired_roll_too_extreme" msgid="1442830503572636825">"Jikisa ikhanda lakho kancane."</string>
+    <string name="face_acquired_too_different" msgid="2520389515612972889">"Ayikwazi ukubona ubuso. Zama futhi."</string>
+    <string name="face_acquired_too_similar" msgid="8882920552674125694">"Shintsha indawo yekhanda lakho kancane"</string>
+    <string name="face_acquired_pan_too_extreme" msgid="5417928604710621088">"Bheka ngqo kakhulu kufoni yakho"</string>
+    <string name="face_acquired_tilt_too_extreme" msgid="5715715666540716620">"Bheka ngqo kakhulu kufoni yakho"</string>
+    <string name="face_acquired_roll_too_extreme" msgid="8261939882838881194">"Bheka ngqo kakhulu kufoni yakho"</string>
     <string name="face_acquired_obscured" msgid="4917643294953326639">"Susa noma yini efihle ubuso bakho."</string>
     <string name="face_acquired_sensor_dirty" msgid="8968391891086721678">"Hlanza okuphezulu kwesikrini sakho, kufaka phakathi ibha emnyama"</string>
-  <string-array name="face_acquired_vendor">
-  </string-array>
+    <string name="face_acquired_dark_glasses_detected" msgid="7263638432128692048">"Ubuso bakho kufanele bubonakale ngokugcwele"</string>
+    <string name="face_acquired_mouth_covering_detected" msgid="615991670821926847">"Ubuso bakho kufanele bubonakale ngokugcwele"</string>
+    <string name="face_acquired_recalibrate_alt" msgid="5702674220280332115">"Ayikwazi ukusungula imodeli yobuso bakho. Zama futhi."</string>
+    <string name="face_acquired_dark_glasses_detected_alt" msgid="4052123776406041972">"Kutholwe izibuko ezimnyama. Ubuso bakho kufanele bubonakale ngokugcwele."</string>
+    <string name="face_acquired_mouth_covering_detected_alt" msgid="1122294982850589766">"Kutholwe ukumbozwa kobuso. Ubuso bakho kufanele bubonakale ngokugcwele."</string>
     <string name="face_error_hw_not_available" msgid="5085202213036026288">"Ayikwazi ukuqinisekisa ubuso. Izingxenyekazi zekhompyutha azitholakali."</string>
     <string name="face_error_timeout" msgid="2598544068593889762">"Zama Ukuvula ngobuso futhi."</string>
     <string name="face_error_no_space" msgid="5649264057026021723">"Ayikwazi ukulondoloza idatha yobuso. Susa endala."</string>
@@ -673,8 +676,6 @@
     <string name="face_or_screen_lock_app_setting_name" msgid="1603149075605709106">"Sebenzisa i-face lock noma ukukhiya isikrini"</string>
     <string name="face_dialog_default_subtitle" msgid="6620492813371195429">"Sebenzisa ubuso bakho ukuze uqhubeke"</string>
     <string name="face_or_screen_lock_dialog_default_subtitle" msgid="5006381531158341844">"Sebenzisa ubuso bakho noma ukukhiya isikrini ukuze uqhubeke"</string>
-  <string-array name="face_error_vendor">
-  </string-array>
     <string name="face_error_vendor_unknown" msgid="7387005932083302070">"Kunento engahambanga kahle. Zama futhi."</string>
     <string name="face_icon_content_description" msgid="465030547475916280">"Isithonjana sobuso"</string>
     <string name="permlab_readSyncSettings" msgid="6250532864893156277">"funda izilungiselelo zokuvumelanisa"</string>

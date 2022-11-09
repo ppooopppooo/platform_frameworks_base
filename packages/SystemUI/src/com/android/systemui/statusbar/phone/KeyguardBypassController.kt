@@ -43,7 +43,6 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
     private var hasFaceFeature: Boolean
     private var pendingUnlock: PendingUnlock? = null
     private val listeners = mutableListOf<OnBypassStateChangedListener>()
-    var userHasDeviceEntryIntent: Boolean = false // ie: attempted udfps auth
 
     private val faceAuthEnabledChangedCallback = object : KeyguardStateController.Callback {
         override fun onFaceAuthEnabledChanged() = notifyListeners()
@@ -93,6 +92,10 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
             notifyListeners()
         }
 
+    var bypassEnabledBiometric: Boolean = false
+
+    var faceUnlockMethod: Int = 0
+
     var bouncerShowing: Boolean = false
     var altBouncerShowing: Boolean = false
     var launchingAffordance: Boolean = false
@@ -133,13 +136,24 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
             }
         })
 
-        val dismissByDefault = if (context.resources.getBoolean(
-                        com.android.internal.R.bool.config_faceAuthDismissesKeyguard)) 1 else 0
-        tunerService.addTunable(object : TunerService.Tunable {
-            override fun onTuningChanged(key: String?, newValue: String?) {
-                bypassEnabled = tunerService.getValue(key, dismissByDefault) != 0
-            }
-        }, Settings.Secure.FACE_UNLOCK_DISMISSES_KEYGUARD)
+        if (context.resources.getBoolean(
+                com.android.internal.R.bool.config_faceAuthOnlyOnSecurityView)){
+            bypassEnabledBiometric = false
+        }else{
+            tunerService.addTunable(object : TunerService.Tunable {
+                override fun onTuningChanged(key: String?, newValue: String?) {
+                    faceUnlockMethod = tunerService.getValue(key, 0)
+                }
+            }, Settings.Secure.FACE_UNLOCK_METHOD)
+            val dismissByDefault = if (context.resources.getBoolean(
+                            com.android.internal.R.bool.config_faceAuthDismissesKeyguard)) 1 else 0
+            tunerService.addTunable(object : TunerService.Tunable {
+                override fun onTuningChanged(key: String?, newValue: String?) {
+                    bypassEnabledBiometric = (faceUnlockMethod == 0 &&
+                        tunerService.getValue(key, dismissByDefault) != 0)
+                }
+            }, Settings.Secure.FACE_UNLOCK_DISMISSES_KEYGUARD)
+        }
         lockscreenUserManager.addUserChangedListener(
                 object : NotificationLockscreenUserManager.UserChangedListener {
                     override fun onUserChanged(userId: Int) {
@@ -159,8 +173,8 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
         biometricSourceType: BiometricSourceType,
         isStrongBiometric: Boolean
     ): Boolean {
-        if (biometricSourceType == BiometricSourceType.FACE && bypassEnabled) {
-            val can = canBypass()
+        if (bypassEnabledBiometric) {
+            val can = biometricSourceType != BiometricSourceType.FACE || canBypass()
             if (!can && (isPulseExpanding || qSExpanded)) {
                 pendingUnlock = PendingUnlock(biometricSourceType, isStrongBiometric)
             }
@@ -184,27 +198,13 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
      * If keyguard can be dismissed because of bypass.
      */
     fun canBypass(): Boolean {
-        if (bypassEnabled) {
+        if (bypassEnabledBiometric) {
             return when {
                 bouncerShowing -> true
                 altBouncerShowing -> true
                 statusBarStateController.state != StatusBarState.KEYGUARD -> false
                 launchingAffordance -> false
                 isPulseExpanding || qSExpanded -> false
-                else -> true
-            }
-        }
-        return false
-    }
-
-    /**
-     * If shorter animations should be played when unlocking.
-     */
-    fun canPlaySubtleWindowAnimations(): Boolean {
-        if (bypassEnabled) {
-            return when {
-                statusBarStateController.state != StatusBarState.KEYGUARD -> false
-                qSExpanded -> false
                 else -> true
             }
         }
@@ -224,6 +224,7 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
             pw.println("  mPendingUnlock: $pendingUnlock")
         }
         pw.println("  bypassEnabled: $bypassEnabled")
+        pw.println("  bypassEnabledBiometric: $bypassEnabledBiometric")
         pw.println("  canBypass: ${canBypass()}")
         pw.println("  bouncerShowing: $bouncerShowing")
         pw.println("  altBouncerShowing: $altBouncerShowing")
@@ -231,7 +232,6 @@ open class KeyguardBypassController : Dumpable, StackScrollAlgorithm.BypassContr
         pw.println("  launchingAffordance: $launchingAffordance")
         pw.println("  qSExpanded: $qSExpanded")
         pw.println("  hasFaceFeature: $hasFaceFeature")
-        pw.println("  userHasDeviceEntryIntent: $userHasDeviceEntryIntent")
     }
 
     /** Registers a listener for bypass state changes. */

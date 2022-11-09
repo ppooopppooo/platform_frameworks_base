@@ -1649,6 +1649,11 @@
          darkening hysteresis constraint value is the n-th element of
          config_screenDarkeningThresholds.
 
+         Historically, it has been assumed that this will be an integer array with values in the
+         range of [0, 255]. However, it is now assumed to be a float array with values in the
+         range of [0, 1]. To accommodate both the possibilities, we internally check the scale on
+         which the thresholds are defined, and calibrate it accordingly.
+
          The (zero-based) index is calculated as follows: (MAX is the largest index of the array)
          condition                       calculated index
          value < level[0]                0
@@ -4358,13 +4363,13 @@
     <string name="config_mediaProjectionPermissionDialogComponent" translatable="false">com.android.systemui/com.android.systemui.media.MediaProjectionPermissionActivity</string>
 
     <!-- Corner radius of system dialogs -->
-    <dimen name="config_dialogCornerRadius">2dp</dimen>
+    <dimen name="config_dialogCornerRadius">28dp</dimen>
     <!-- Corner radius of system buttons -->
-    <dimen name="config_buttonCornerRadius">@dimen/control_corner_material</dimen>
+    <dimen name="config_buttonCornerRadius">4dp</dimen>
     <!-- Corner radius for bottom sheet system dialogs -->
-    <dimen name="config_bottomDialogCornerRadius">@dimen/config_dialogCornerRadius</dimen>
+    <dimen name="config_bottomDialogCornerRadius">16dp</dimen>
     <!-- Corner radius of system progress bars -->
-    <dimen name="config_progressBarCornerRadius">@dimen/progress_bar_corner_material</dimen>
+    <dimen name="config_progressBarCornerRadius">1000dp</dimen>
     <!-- Controls whether system buttons use all caps for text -->
     <bool name="config_buttonTextAllCaps">true</bool>
     <!-- Name of the font family used for system surfaces where the font should use medium weight -->

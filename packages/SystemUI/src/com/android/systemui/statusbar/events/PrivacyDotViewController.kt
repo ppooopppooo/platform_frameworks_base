@@ -195,7 +195,6 @@ class PrivacyDotViewController @Inject constructor(
 
     @UiThread
     private fun showDotView(dot: View, animate: Boolean) {
-        showingListener?.onPrivacyDotShown(dot)
         dot.clearAnimation()
         if (animate) {
             dot.visibility = View.VISIBLE
@@ -209,6 +208,7 @@ class PrivacyDotViewController @Inject constructor(
             dot.visibility = View.VISIBLE
             dot.alpha = 1f
         }
+        showingListener?.onPrivacyDotShown(dot)
     }
 
     // Update the gravity and margins of the privacy views
@@ -512,7 +512,7 @@ class PrivacyDotViewController @Inject constructor(
             if (shouldShow && state.designatedCorner != null) {
                 showDotView(state.designatedCorner, true)
             } else if (!shouldShow && state.designatedCorner != null) {
-                hideDotView(state.designatedCorner, true)
+                hideDotView(state.designatedCorner, false)
             }
         }
 

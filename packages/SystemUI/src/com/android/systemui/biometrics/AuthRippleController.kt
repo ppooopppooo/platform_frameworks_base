@@ -48,7 +48,6 @@ import com.android.systemui.statusbar.phone.dagger.CentralSurfacesComponent.Cent
 import com.android.systemui.statusbar.policy.ConfigurationController
 import com.android.systemui.statusbar.policy.KeyguardStateController
 import com.android.systemui.util.ViewController
-import com.android.systemui.util.leak.RotationUtils
 import java.io.PrintWriter
 import javax.inject.Inject
 import javax.inject.Provider
@@ -85,7 +84,7 @@ class AuthRippleController @Inject constructor(
     var lightRevealScrimAnimator: ValueAnimator? = null
     var fingerprintSensorLocation: PointF? = null
     private var faceSensorLocation: PointF? = null
-    private var circleReveal: LightRevealEffect? = null
+    private var circleReveal: CircleReveal? = null
 
     private var udfpsController: UdfpsController? = null
     private var udfpsRadius: Float = -1f
@@ -133,17 +132,39 @@ class AuthRippleController @Inject constructor(
         }
 
         updateSensorLocation()
-        if (biometricSourceType == BiometricSourceType.FINGERPRINT &&
-            fingerprintSensorLocation != null) {
-            mView.setFingerprintSensorLocation(fingerprintSensorLocation!!, udfpsRadius)
-            showUnlockedRipple()
-        } else if (biometricSourceType == BiometricSourceType.FACE &&
-            faceSensorLocation != null) {
-            if (!bypassController.canBypass()) {
+        if (biometricSourceType == BiometricSourceType.FINGERPRINT) {
+            fingerprintSensorLocation?.let {
+                mView.setFingerprintSensorLocation(it, udfpsRadius)
+            if (circleReveal == null || circleReveal!!.centerX != it.x || circleReveal!!.centerY != it.y) {
+                circleReveal = CircleReveal(
+                    it.x,
+                    it.y,
+                    0f,
+                    Math.max(
+                        Math.max(it.x, centralSurfaces.displayWidth - it.x),
+                        Math.max(it.y, centralSurfaces.displayHeight - it.y)
+                    )
+                )
+                }
+                showUnlockedRipple()
+            }
+        } else if (biometricSourceType == BiometricSourceType.FACE) {
+            if (!bypassController.canBypass() && !authController.isUdfpsFingerDown) {
                 return
             }
-            mView.setSensorLocation(faceSensorLocation!!)
-            showUnlockedRipple()
+            faceSensorLocation?.let {
+                mView.setSensorLocation(it)
+                circleReveal = CircleReveal(
+                        it.x,
+                        it.y,
+                        0f,
+                        Math.max(
+                                Math.max(it.x, centralSurfaces.displayWidth - it.x),
+                                Math.max(it.y, centralSurfaces.displayHeight - it.y)
+                        )
+                )
+                showUnlockedRipple()
+            }
         }
     }
 
@@ -188,6 +209,10 @@ class AuthRippleController @Inject constructor(
                     addUpdateListener { animator ->
                         if (lightRevealScrim.revealEffect != circleReveal) {
                             // if something else took over the reveal, let's cancel ourselves
+                            // When the animator is almost done, fully reveal the scrim.
+                            if (animator.animatedValue as Float >= 0.9999f) {
+                                lightRevealScrim.revealAmount = 1f
+                            }
                             cancel()
                             return@addUpdateListener
                         }
@@ -225,48 +250,8 @@ class AuthRippleController @Inject constructor(
     }
 
     fun updateSensorLocation() {
-        updateFingerprintLocation()
+        fingerprintSensorLocation = authController.fingerprintSensorLocation
         faceSensorLocation = authController.faceAuthSensorLocation
-        fingerprintSensorLocation?.let {
-            circleReveal = CircleReveal(
-                it.x,
-                it.y,
-                0f,
-                Math.max(
-                    Math.max(it.x, centralSurfaces.displayWidth - it.x),
-                    Math.max(it.y, centralSurfaces.displayHeight - it.y)
-                )
-            )
-        }
-    }
-
-    private fun updateFingerprintLocation() {
-        val displayMetrics = DisplayMetrics()
-        sysuiContext.display?.getRealMetrics(displayMetrics)
-        val width = displayMetrics.widthPixels
-        val height = displayMetrics.heightPixels
-
-        authController.fingerprintSensorLocation?.let {
-            fingerprintSensorLocation = when (RotationUtils.getRotation(sysuiContext)) {
-                RotationUtils.ROTATION_LANDSCAPE -> {
-                    val normalizedYPos: Float = it.y / width
-                    val normalizedXPos: Float = it.x / height
-                    PointF(width * normalizedYPos, height * (1 - normalizedXPos))
-                }
-                RotationUtils.ROTATION_UPSIDE_DOWN -> {
-                    PointF(width - it.x, height - it.y)
-                }
-                RotationUtils.ROTATION_SEASCAPE -> {
-                    val normalizedYPos: Float = it.y / width
-                    val normalizedXPos: Float = it.x / height
-                    PointF(width * (1 - normalizedYPos), height * normalizedXPos)
-                }
-                else -> {
-                    // ROTATION_NONE
-                    PointF(it.x, it.y)
-                }
-            }
-        }
     }
 
     private fun updateRippleColor() {
@@ -394,6 +379,7 @@ class AuthRippleController @Inject constructor(
                         showUnlockRipple(BiometricSourceType.FINGERPRINT)
                     }
                     "face" -> {
+                        // note: only shows when about to proceed to the home screen
                         updateSensorLocation()
                         pw.println("face ripple sensorLocation=$faceSensorLocation")
                         showUnlockRipple(BiometricSourceType.FACE)

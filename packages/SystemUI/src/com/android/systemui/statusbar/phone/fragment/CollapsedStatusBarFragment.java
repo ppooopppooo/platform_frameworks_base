@@ -541,6 +541,10 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
         int state = mAnimationScheduler.getAnimationState();
         if (state == IDLE || state == SHOWING_PERSISTENT_DOT) {
             animateShow(mSystemIconArea, animate);
+        } else {
+            // We are in the middle of a system status event animation, which will animate the
+            // alpha (but not the visibility). Allow the view to become visible again
+            mSystemIconArea.setVisibility(View.VISIBLE);
         }
     }
 
@@ -567,7 +571,12 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
      * don't set the clock GONE otherwise it'll mess up the animation.
      */
     private int clockHiddenMode() {
-        return View.INVISIBLE;
+        if (!mPanelExpansionStateManager.isClosed() && !mKeyguardStateController.isShowing()
+                && !mStatusBarStateController.isDozing()
+                && mClockController.getClock().shouldBeVisible()) {
+            return View.INVISIBLE;
+        }
+        return View.GONE;
     }
 
     public void hideNotificationIconArea(boolean animate) {
@@ -617,6 +626,8 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
      * Hides a view.
      */
     private void animateHide(final View v, boolean animate) {
+        if (v == null)
+            return;
         animateHiddenState(v, View.INVISIBLE, animate);
     }
 
@@ -624,6 +635,8 @@ public class CollapsedStatusBarFragment extends Fragment implements CommandQueue
      * Shows a view, and synchronizes the animation with Keyguard exit animations, if applicable.
      */
     private void animateShow(View v, boolean animate) {
+        if (v == null)
+            return;
         v.animate().cancel();
         v.setVisibility(View.VISIBLE);
         if (!animate) {

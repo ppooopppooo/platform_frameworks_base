@@ -1102,7 +1102,6 @@ public final class ViewRootImpl implements ViewParent,
             if (mView == null) {
                 mView = view;
 
-                mAttachInfo.mDisplayState = mDisplay.getState();
                 mDisplayInstallOrientation = mDisplay.getInstallOrientation();
                 mViewLayoutDirectionInitial = mView.getRawLayoutDirection();
                 mFallbackEventHandler.setView(view);
@@ -1263,11 +1262,7 @@ public final class ViewRootImpl implements ViewParent,
                 }
                 if (DEBUG_LAYOUT) Log.v(mTag, "Added window " + mWindow);
                 if (res < WindowManagerGlobal.ADD_OKAY) {
-                    mAttachInfo.mRootView = null;
-                    mAdded = false;
                     mFallbackEventHandler.setView(null);
-                    unscheduleTraversals();
-                    setAccessibilityFocus(null, null);
                     switch (res) {
                         case WindowManagerGlobal.ADD_BAD_APP_TOKEN:
                         case WindowManagerGlobal.ADD_BAD_SUBWINDOW_TOKEN:
@@ -1314,6 +1309,9 @@ public final class ViewRootImpl implements ViewParent,
                 }
 
                 registerListeners();
+                // We should update mAttachInfo.mDisplayState after registerDisplayListener
+                // because displayState might be changed before registerDisplayListener.
+                mAttachInfo.mDisplayState = mDisplay.getState();
                 if ((res & WindowManagerGlobal.ADD_FLAG_USE_BLAST) != 0) {
                     mUseBLASTAdapter = true;
                 }
@@ -5168,7 +5166,9 @@ public final class ViewRootImpl implements ViewParent,
         // Make sure we free-up insets resources if view never received onWindowFocusLost()
         // because of a die-signal
         mInsetsController.onWindowFocusLost();
-        mFirstInputStage.onDetachedFromWindow();
+        if (mFirstInputStage != null) {
+            mFirstInputStage.onDetachedFromWindow();
+        }
         if (mView != null && mView.mAttachInfo != null) {
             mAttachInfo.mTreeObserver.dispatchOnWindowAttachedChange(false);
             mView.dispatchDetachedFromWindow();
@@ -7271,7 +7271,7 @@ public final class ViewRootImpl implements ViewParent,
         // probably not be set to anything less than about 4.
         // If fling accuracy is a problem then consider tuning the tick distance instead.
         private static final float MIN_FLING_VELOCITY_TICKS_PER_SECOND = 6f;
-        private static final float MAX_FLING_VELOCITY_TICKS_PER_SECOND = 20f;
+        private static final float MAX_FLING_VELOCITY_TICKS_PER_SECOND = 24f;
 
         // Fling velocity decay factor applied after each new key is emitted.
         // This parameter controls the deceleration and overall duration of the fling.
@@ -8471,6 +8471,14 @@ public final class ViewRootImpl implements ViewParent,
             mOnBackInvokedDispatcher.detachFromWindow();
             if (mAdded) {
                 dispatchDetachedFromWindow();
+            } else {
+                Log.w(mTag, "add view failed and remove related objects");
+
+                mAccessibilityManager.removeAccessibilityStateChangeListener(
+                        mAccessibilityInteractionConnectionManager);
+                mAccessibilityManager.removeHighTextContrastStateChangeListener(
+                        mHighContrastTextManager);
+                mDisplayManager.unregisterDisplayListener(mDisplayListener);
             }
 
             if (mAdded && !mFirst) {

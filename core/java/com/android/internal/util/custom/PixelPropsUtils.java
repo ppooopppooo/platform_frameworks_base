@@ -16,8 +16,10 @@
 package com.android.internal.util.custom;
 
 import android.app.Application;
+import android.content.Context;
 import android.os.Build;
 import android.os.SystemProperties;
+import android.text.TextUtils;
 import android.util.Log;
 
 import java.lang.reflect.Field;
@@ -138,10 +140,10 @@ public class PixelPropsUtils {
         }
     }
 
-    public static void setProps(Application app) {
-        final String packageName = app.getPackageName();
-        final String processName = app.getProcessName();
-        if (packageName == null) {
+    public static void setProps(Context context) {
+        final String packageName = context.getPackageName();
+        final String processName = Application.getProcessName();
+        if (TextUtils.isEmpty(packageName) || processName == null) {
             return;
         }
         if (packageName.startsWith("com.samsung.android.")){

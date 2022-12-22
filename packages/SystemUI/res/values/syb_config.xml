@@ -30,7 +30,7 @@
     <integer name="config_screenRecorderMaxFramerate">0</integer>
 
     <!-- Udfps vendor code -->
-    <integer name="config_udfpsVendorCode">0</integer>
+    <integer name="config_udfps_vendor_code">0</integer>
 
     <!-- StatusBar burn-in protection -->
     <bool name="config_statusBarBurnInProtection">true</bool>

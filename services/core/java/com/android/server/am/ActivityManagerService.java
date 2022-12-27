@@ -16388,6 +16388,11 @@ public class ActivityManagerService extends IActivityManager.Stub
         }
     }
 
+    @Override
+    public void enableBinderTracing() {
+        Binder.enableTracingForUid(Binder.getCallingUid());
+    }
+
     @VisibleForTesting
     public final class LocalService extends ActivityManagerInternal
             implements ActivityManagerLocal {

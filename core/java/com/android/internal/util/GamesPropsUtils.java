@@ -36,11 +36,15 @@ public class GamesPropsUtils extends PixelPropsUtils {
     private static final boolean DEBUG = true;
     private static final boolean DEBUG_PACKAGES = false;
 
+    private static final String BRAND_ROG1 = "asus";
     private static final String MODEL_ROG1 = "ASUS_Z01QD";
+    private static final String BRAND_XP5 = "Sony";
     private static final String MODEL_XP5 = "SO-52A";
+    private static final String BRAND_OP = "OnePlus";
     private static final String MODEL_OP8P = "IN2020";
     private static final String MODEL_OP9P = "LE2123";
-    private static final String MODEL_MI11 = "M2102K1G";
+    private static final String BRAND_RMK50P = "Xiaomi";
+    private static final String MODEL_RMK50P = "22011211C";
 
     private static final Set<String> sRog1Packages = Set.of(
         "com.dts.freefireth",
@@ -73,14 +77,26 @@ public class GamesPropsUtils extends PixelPropsUtils {
         "com.epicgames.portal"
     );
 
-    private static final Set<String> sMi11Packages = Set.of(
+    private static final Set<String> sRmK50PPackages = Set.of(
         "com.ea.gp.apexlegendsmobilefps",
         "com.levelinfinite.hotta.gp",
         "com.mobile.legends",
         "com.tencent.tmgp.sgame"
     );
 
+    private static final Map<String, String> sPackagesBrandMap = new HashMap<String, String>();
+
     private static final Map<String, String> sPackagesModelMap = new HashMap<String, String>();
+
+    static {
+        Map.of(
+            sRog1Packages, BRAND_ROG1,
+            sXp5Packages,  BRAND_XP5,
+            sOp8pPackages, BRAND_OP,
+            sOp9pPackages, BRAND_OP,
+            sRmK50PPackages, BRAND_RMK50P
+        ).forEach((k, v) -> k.forEach(p -> sPackagesBrandMap.put(p, v)));
+    }
 
     static {
         Map.of(
@@ -88,7 +104,7 @@ public class GamesPropsUtils extends PixelPropsUtils {
             sXp5Packages,  MODEL_XP5,
             sOp8pPackages, MODEL_OP8P,
             sOp9pPackages, MODEL_OP9P,
-            sMi11Packages, MODEL_MI11
+            sRmK50PPackages, MODEL_RMK50P
         ).forEach((k, v) -> k.forEach(p -> sPackagesModelMap.put(p, v)));
     }
 
@@ -101,8 +117,10 @@ public class GamesPropsUtils extends PixelPropsUtils {
 
         if (sPackagesModelMap.containsKey(packageName) && Secure.getInt(
                 context.getContentResolver(), Secure.GAMES_DEVICE_SPOOF, 0) == 1) {
+            String brand = sPackagesBrandMap.get(packageName);
             String model = sPackagesModelMap.get(packageName);
-            dlog("Spoofing model to " + model + " for package " + packageName);
+            dlog("Spoofing model to " + brand + " " + model + " for package " + packageName);
+            setPropValue("BRAND", brand);
             setPropValue("MODEL", model);
         }
     }

@@ -127,8 +127,7 @@ android_library {
         "lottie",
         "LowLightDreamLib",
         "faceunlock_framework",
-        "colorkt",
-        "themelib",
+        "bcsmartspace-google",
     ],
     manifest: "AndroidManifest.xml",
 

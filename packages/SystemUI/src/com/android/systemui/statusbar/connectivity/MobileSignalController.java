@@ -254,7 +254,7 @@ public class MobileSignalController extends SignalController<MobileState, Mobile
                 Settings.System.SHOW_VOLTE_ICON, 1,
                 UserHandle.USER_CURRENT) == 1;
         mVoLTEstyle = Settings.System.getIntForUser(resolver,
-                Settings.System.VOLTE_ICON_STYLE, 0,
+                Settings.System.VOLTE_ICON_STYLE, 3,
                 UserHandle.USER_CURRENT);
         mVoWiFiIcon = Settings.System.getIntForUser(resolver,
                 Settings.System.VOWIFI_ICON, 0,

@@ -88,7 +88,7 @@ public class PixelPropsUtils {
     private static final String PROCESS_GMS_UNSTABLE = PACKAGE_GMS + ".unstable";
 
     private static final String GMS_FINGERPRINT =
-            SystemProperties.get("ro.build.gms_fingerprint");
+            "google/angler/angler:6.0/MDB08L/2343525:user/release-keys";
 
     private static volatile boolean sIsGms = false;
     private static volatile boolean sIsFinsky = false;

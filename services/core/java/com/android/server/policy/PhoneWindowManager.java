@@ -654,6 +654,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     private boolean mLockNowPending = false;
 
     private int mTorchActionMode;
+    private boolean mUnhandledTorchPower = false;
 
     private PocketManager mPocketManager;
     private PocketLock mPocketLock;
@@ -1016,6 +1017,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             if (!interactive) {
                 if (mTorchActionMode == 0) {
                     wakeUpFromPowerKey(event.getDownTime());
+                } else {
+                    mUnhandledTorchPower = true;
                 }
             }
         } else {
@@ -1058,6 +1061,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             mSideFpsEventHandler.notifyPowerPressed();
         }
         final boolean interactive = Display.isOnState(mDefaultDisplay.getState());
+        final boolean torchActionEnabled = mTorchActionMode != 0;
 
         Slog.d(TAG, "powerPress: eventTime=" + eventTime + " interactive=" + interactive
                 + " count=" + count + " beganFromNonInteractive=" + beganFromNonInteractive
@@ -1070,6 +1074,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         } else if (count > 3 && count <= getMaxMultiPressPowerCount()) {
             Slog.d(TAG, "No behavior defined for power press count " + count);
         } else if (count == 1 && interactive) {
+            if (mUnhandledTorchPower && beganFromNonInteractive && torchActionEnabled) {
+                wakeUpFromPowerKey(eventTime);
+                return;
+            }
             if (beganFromNonInteractive) {
                 // The screen off case, where we might want to start dreaming on power button press.
                 attemptToDreamFromShortPowerButtonPress(false, () -> {});
@@ -1130,7 +1138,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     break;
                 }
             }
-        } else if (mTorchActionMode != 0 && beganFromNonInteractive) {
+        }
+        if (mUnhandledTorchPower && torchActionEnabled && beganFromNonInteractive) {
             wakeUpFromPowerKey(eventTime);
         }
     }

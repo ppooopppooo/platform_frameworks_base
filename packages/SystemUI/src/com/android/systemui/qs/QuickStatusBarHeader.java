@@ -49,7 +49,6 @@ import com.android.systemui.Dependency;
 import com.android.systemui.R;
 import com.android.systemui.battery.BatteryMeterView;
 import com.android.systemui.plugins.ActivityStarter;
-import com.android.systemui.statusbar.NetworkTraffic;
 import com.android.systemui.statusbar.phone.StatusBarContentInsetsProvider;
 import com.android.systemui.statusbar.phone.StatusBarIconController;
 import com.android.systemui.statusbar.phone.StatusBarIconController.TintedIconManager;
@@ -69,9 +68,6 @@ import java.util.List;
  */
 public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tunable,
         View.OnClickListener, View.OnLongClickListener {
-
-    private static final String NETWORK_TRAFFIC_LOCATION =
-            Settings.Secure.NETWORK_TRAFFIC_LOCATION;
 
     public static final String STATUS_BAR_BATTERY_STYLE =
             "system:" + Settings.System.STATUS_BAR_BATTERY_STYLE;
@@ -138,9 +134,6 @@ public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tu
 
     private boolean mUseCombinedQSHeader;
 
-    private NetworkTraffic mNetworkTraffic;
-    private boolean mShowNetworkTraffic;
-
     private final ActivityStarter mActivityStarter;
     private final Vibrator mVibrator;
 
@@ -193,7 +186,6 @@ public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tu
         mBatteryRemainingIcon.setOnClickListener(this);
         mBatteryRemainingIcon.setOnLongClickListener(this);
 
-        mNetworkTraffic = findViewById(R.id.network_traffic);
         mBatteryIcon = findViewById(R.id.batteryIcon);
 
         Configuration config = mContext.getResources().getConfiguration();
@@ -207,7 +199,6 @@ public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tu
         updateResources();
 
         Dependency.get(TunerService.class).addTunable(this,
-                NETWORK_TRAFFIC_LOCATION,
                 StatusBarIconController.ICON_HIDE_LIST,
                 STATUS_BAR_BATTERY_STYLE,
                 QS_BATTERY_STYLE,
@@ -371,7 +362,6 @@ public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tu
             }
             mBatteryRemainingIcon.updateColors(mTextColorPrimary, textColorSecondary,
                     mTextColorPrimary);
-            mNetworkTraffic.setTint(textColor);
             mBatteryIcon.updateColors(mTextColorPrimary, textColorSecondary,
                     mTextColorPrimary);
         }
@@ -475,11 +465,10 @@ public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tu
         boolean showBattery = mQSBatteryLocation == 1
                 && (mBatteryIcon.getBatteryStyle() != 5
                 || mBatteryIcon.getBatteryEstimate() != 0);
-        mNetworkTraffic.setChipVisibility(visibility);
         if (showBattery) {
             mBatteryIcon.setVisibility(visibility ? View.GONE : View.VISIBLE);
         }
-        if (visibility || showBattery || mShowNetworkTraffic) {
+        if (visibility || showBattery) {
             // Animates the icons and battery indicator from alpha 0 to 1, when the chip is visible
             mIconsAlphaAnimator = mIconsAlphaAnimatorFixed;
             mIconsAlphaAnimator.setPosition(mKeyguardExpansionFraction);
@@ -690,11 +679,6 @@ public class QuickStatusBarHeader extends FrameLayout implements TunerService.Tu
     @Override
     public void onTuningChanged(String key, String newValue) {
         switch (key) {
-            case NETWORK_TRAFFIC_LOCATION:
-                mShowNetworkTraffic =
-                        TunerService.parseInteger(newValue, 0) == 2;
-                setChipVisibility(mPrivacyChip.getVisibility() == View.VISIBLE);
-                break;
             case QS_BATTERY_STYLE:
                 mQSBatteryStyle =
                         TunerService.parseInteger(newValue, -1);

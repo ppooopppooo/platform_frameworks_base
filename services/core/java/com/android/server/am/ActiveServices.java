@@ -2944,7 +2944,9 @@ public final class ActiveServices {
             final ProcessServiceRecord clientPsr = b.client.mServices;
             clientPsr.addConnection(c);
             c.startAssociationIfNeeded();
-            if ((c.flags&Context.BIND_ABOVE_CLIENT) != 0) {
+            // Don't set hasAboveClient if binding to self to prevent modifyRawOomAdj() from
+            // dropping the process' adjustment level.
+            if (b.client != s.app && (c.flags & Context.BIND_ABOVE_CLIENT) != 0) {
                 clientPsr.setHasAboveClient(true);
             }
             if ((c.flags&Context.BIND_ALLOW_WHITELIST_MANAGEMENT) != 0) {
@@ -3435,6 +3437,11 @@ public final class ActiveServices {
                         if ((sInfo.flags & ServiceInfo.FLAG_ISOLATED_PROCESS) == 0) {
                             throw new SecurityException("BIND_EXTERNAL_SERVICE failed, "
                                     + className + " is not an isolatedProcess");
+                        }
+                        if (!mAm.getPackageManagerInternal().isSameApp(callingPackage, callingUid,
+                                userId)) {
+                            throw new SecurityException("BIND_EXTERNAL_SERVICE failed, "
+                                    + "calling package not owned by calling UID ");
                         }
                         // Run the service under the calling package's application.
                         ApplicationInfo aInfo = AppGlobals.getPackageManager().getApplicationInfo(

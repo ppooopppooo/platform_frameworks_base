@@ -40,6 +40,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
+import android.app.ActivityTaskManager;
 import android.app.ExitTransitionCoordinator;
 import android.app.ExitTransitionCoordinator.ExitTransitionCallbacks;
 import android.app.ICompatCameraControlCallback;
@@ -50,6 +51,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Insets;
@@ -102,6 +104,8 @@ import com.android.systemui.dagger.qualifiers.Main;
 import com.android.systemui.flags.FeatureFlags;
 import com.android.systemui.screenshot.ScreenshotController.SavedImageData.ActionTransition;
 import com.android.systemui.screenshot.TakeScreenshotService.RequestCallback;
+import com.android.systemui.shared.system.TaskStackChangeListener;
+import com.android.systemui.shared.system.TaskStackChangeListeners;
 import com.android.systemui.util.Assert;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -173,6 +177,7 @@ public class ScreenshotController {
      */
     static class SavedImageData {
         public Uri uri;
+        public Supplier<ActionTransition> viewTransition;
         public Supplier<ActionTransition> shareTransition;
         public Supplier<ActionTransition> editTransition;
         public Notification.Action deleteAction;
@@ -239,6 +244,7 @@ public class ScreenshotController {
     // ScreenshotNotificationSmartActionsProvider.
     static final String EXTRA_ACTION_TYPE = "android:screenshot_action_type";
     static final String EXTRA_ID = "android:screenshot_id";
+    static final String ACTION_TYPE_VIEW = "View";
     static final String ACTION_TYPE_DELETE = "Delete";
     static final String ACTION_TYPE_SHARE = "Share";
     static final String ACTION_TYPE_EDIT = "Edit";
@@ -289,6 +295,8 @@ public class ScreenshotController {
         respondToBack();
     };
 
+    private final FullScreenshotRunnable mFullScreenshotRunnable = new FullScreenshotRunnable();
+
     private ScreenshotView mScreenshotView;
     private Bitmap mScreenBitmap;
     private SaveImageInBackgroundTask mSaveInBgTask;
@@ -308,6 +316,37 @@ public class ScreenshotController {
                     | ActivityInfo.CONFIG_UI_MODE
                     | ActivityInfo.CONFIG_SCREEN_LAYOUT
                     | ActivityInfo.CONFIG_ASSETS_PATHS);
+
+    private ComponentName mTaskComponentName;
+    private PackageManager mPm;
+
+    private final TaskStackChangeListener mTaskListener = new TaskStackChangeListener() {
+        @Override
+        public void onTaskStackChanged() {
+            mBgExecutor.execute(() -> updateForegroundTaskSync());
+        }
+    };
+
+    private void updateForegroundTaskSync() {
+        try {
+            final ActivityTaskManager.RootTaskInfo focusedStack =
+                    ActivityTaskManager.getService().getFocusedRootTaskInfo();
+            if (focusedStack != null && focusedStack.topActivity != null) {
+                mTaskComponentName = focusedStack.topActivity;
+            }
+        } catch (RemoteException e) {
+            Log.e(TAG, "Failed to get foreground task component", e);
+        }
+    }
+
+    private String getForegroundAppLabel() {
+        try {
+            final ActivityInfo ai = mPm.getActivityInfo(mTaskComponentName, 0);
+            return ai.applicationInfo.loadLabel(mPm).toString();
+        } catch (PackageManager.NameNotFoundException e) {
+             return null;
+        }
+    }
 
     @Inject
     ScreenshotController(
@@ -390,12 +429,35 @@ public class ScreenshotController {
         mContext.registerReceiver(mCopyBroadcastReceiver, new IntentFilter(
                         ClipboardOverlayController.COPY_OVERLAY_ACTION),
                 ClipboardOverlayController.SELF_PERMISSION, null, Context.RECEIVER_NOT_EXPORTED);
+
+        // Grab PackageManager
+        mPm = mContext.getPackageManager();
+
+        // Register task stack listener
+        TaskStackChangeListeners.getInstance().registerTaskStackListener(mTaskListener);
+
+        // Initialize current foreground package name
+        updateForegroundTaskSync();
     }
 
     @MainThread
     void takeScreenshotFullscreen(ComponentName topComponent, Consumer<Uri> finisher,
             RequestCallback requestCallback) {
         Assert.isMainThread();
+        mScreenshotHandler.removeCallbacks(mFullScreenshotRunnable);
+        /**
+         * Do not let it run the finish callback, it'll reset the service
+         * connection and break the next screenshot.
+         */
+        mCurrentRequestCallback = null;
+        dismissScreenshot(SCREENSHOT_DISMISSED_OTHER);
+        mFullScreenshotRunnable.setArgs(topComponent, finisher, requestCallback);
+        // Wait 50ms to make sure we are on new frame.
+        mScreenshotHandler.postDelayed(mFullScreenshotRunnable, 50);
+    }
+
+    void takeScreenshotFullscreenInternal(ComponentName topComponent, Consumer<Uri> finisher,
+            RequestCallback requestCallback) {
         mCurrentRequestCallback = requestCallback;
         DisplayMetrics displayMetrics = new DisplayMetrics();
         getDefaultDisplay().getRealMetrics(displayMetrics);
@@ -460,6 +522,7 @@ public class ScreenshotController {
         removeWindow();
         releaseMediaPlayer();
         releaseContext();
+        TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mTaskListener);
         mBgExecutor.shutdownNow();
     }
 
@@ -534,8 +597,7 @@ public class ScreenshotController {
 
             @Override
             public void onTouchOutside() {
-                // TODO(159460485): Remove this when focus is handled properly in the system
-                setWindowFocusable(false);
+                dismissScreenshot(SCREENSHOT_DISMISSED_OTHER);
             }
         }, mActionExecutor, mFlags);
         mScreenshotView.setDefaultTimeoutMillis(mScreenshotHandler.getDefaultTimeoutMillis());
@@ -786,6 +848,7 @@ public class ScreenshotController {
                 return;
             }
 
+            mLongScreenshotHolder.setForegroundAppName(getForegroundAppLabel());
             mLongScreenshotHolder.setLongScreenshot(longScreenshot);
             mLongScreenshotHolder.setTransitionDestinationCallback(
                     (transitionDestination, onTransitionEnd) -> {
@@ -1005,7 +1068,7 @@ public class ScreenshotController {
         mSaveInBgTask = new SaveImageInBackgroundTask(mContext, mFlags, mImageExporter,
                 mScreenshotSmartActions, data, getActionTransitionSupplier(),
                 mScreenshotNotificationSmartActionsProvider);
-        mSaveInBgTask.execute();
+        mSaveInBgTask.execute(getForegroundAppLabel());
     }
 
 
@@ -1210,6 +1273,24 @@ public class ScreenshotController {
                 public void onFinish() {
                 }
             };
+        }
+    }
+
+    private class FullScreenshotRunnable implements Runnable {
+        ComponentName mTopComponent;
+        Consumer<Uri> mFinisher;
+        RequestCallback mRequestCallback;
+
+        public void setArgs(ComponentName topComponent, Consumer<Uri> finisher,
+                RequestCallback requestCallback) {
+            mTopComponent = topComponent;
+            mFinisher = finisher;
+            mRequestCallback = requestCallback;
+        }
+
+        @Override
+        public void run() {
+            takeScreenshotFullscreenInternal(mTopComponent, mFinisher, mRequestCallback);
         }
     }
 }

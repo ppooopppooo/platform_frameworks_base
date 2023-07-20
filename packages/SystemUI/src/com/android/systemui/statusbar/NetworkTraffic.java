@@ -25,6 +25,10 @@ import android.graphics.drawable.Drawable;
 import android.graphics.PorterDuff;
 import android.graphics.Typeface;
 import android.net.ConnectivityManager;
+import android.net.LinkProperties;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.net.TrafficStats;
 import android.os.Handler;
 import android.os.Message;
@@ -59,6 +63,8 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable {
 
     private static final int MESSAGE_TYPE_PERIODIC_REFRESH = 0;
     private static final int MESSAGE_TYPE_UPDATE_VIEW = 1;
+    private static final int MESSAGE_TYPE_ADD_NETWORK = 2;
+    private static final int MESSAGE_TYPE_REMOVE_NETWORK = 3;
 
     private static final int Kilo = 1000;
     private static final int Mega = Kilo * Kilo;
@@ -114,6 +120,11 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable {
     private boolean mConnectionAvailable = true;
     private boolean mChipVisible;
 
+    private final HashMap<Network, LinkProperties> mLinkPropertiesMap = new HashMap<>();
+    // Used to indicate that the set of sources contributing
+    // to current stats have changed.
+    private boolean mNetworksChanged = true;
+
     public NetworkTraffic(Context context) {
         this(context, null);
     }
@@ -139,6 +150,17 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable {
                     case MESSAGE_TYPE_UPDATE_VIEW:
                         displayStatsAndReschedule();
                         break;
+
+                    case MESSAGE_TYPE_ADD_NETWORK:
+                        final LinkPropertiesHolder lph = (LinkPropertiesHolder) msg.obj;
+                        mLinkPropertiesMap.put(lph.getNetwork(), lph.getLinkProperties());
+                        mNetworksChanged = true;
+                        break;
+
+                    case MESSAGE_TYPE_REMOVE_NETWORK:
+                        mLinkPropertiesMap.remove((Network) msg.obj);
+                        mNetworksChanged = true;
+                        break;
                 }
             }
 
@@ -150,15 +172,30 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable {
                     return;
                 }
                 // Sum tx and rx bytes from all sources of interest
-                final long txBytes = TrafficStats.getTotalTxBytes();
-                final long rxBytes = TrafficStats.getTotalRxBytes();
+                long txBytes = 0;
+                long rxBytes = 0;
+                // Add interface stats
+                for (LinkProperties linkProperties : mLinkPropertiesMap.values()) {
+                    final String iface = linkProperties.getInterfaceName();
+                    if (iface == null) {
+                        continue;
+                    }
+                    final long ifaceTxBytes = TrafficStats.getTxBytes(iface);
+                    final long ifaceRxBytes = TrafficStats.getRxBytes(iface);
+                    txBytes += ifaceTxBytes;
+                    rxBytes += ifaceRxBytes;
+                }
 
                 final long txBytesDelta = txBytes - mLastTxBytes;
                 final long rxBytesDelta = rxBytes - mLastRxBytes;
 
-                if (timeDelta > 0 && txBytesDelta >= 0 && rxBytesDelta >= 0) {
+                if (!mNetworksChanged && timeDelta > 0 && txBytesDelta >= 0 && rxBytesDelta >= 0) {
                     mTxBytes = (long) (txBytesDelta / (timeDelta / 1000f));
                     mRxBytes = (long) (rxBytesDelta / (timeDelta / 1000f));
+                } else if (mNetworksChanged) {
+                    mTxBytes = 0;
+                    mRxBytes = 0;
+                    mNetworksChanged = false;
                 }
                 mLastTxBytes = txBytes;
                 mLastRxBytes = rxBytes;
@@ -500,5 +537,23 @@ public class NetworkTraffic extends TextView implements TunerService.Tunable {
             mDrawable.setColorFilter(mIconTint, PorterDuff.Mode.MULTIPLY);
         }
         setTextColor(mIconTint);
+    }
+
+    private static class LinkPropertiesHolder {
+        private final Network mNetwork;
+        private final LinkProperties mLinkProperties;
+
+        public LinkPropertiesHolder(Network network, LinkProperties linkProperties) {
+            mNetwork = network;
+            mLinkProperties = linkProperties;
+        }
+
+        public Network getNetwork() {
+            return mNetwork;
+        }
+
+        public LinkProperties getLinkProperties() {
+            return mLinkProperties;
+        }
     }
 }

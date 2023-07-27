@@ -62,6 +62,8 @@ import java.util.function.Supplier;
  */
 class SurfaceAnimationRunner {
 
+    private static final String TAG = SurfaceAnimationRunner.class.getSimpleName();
+
     private final Object mLock = new Object();
 
     /**
@@ -185,6 +187,16 @@ class SurfaceAnimationRunner {
                 // We must wait for t to be committed since otherwise the leash doesn't have the
                 // windows we want to screenshot and extend as children.
                 t.addTransactionCommittedListener(mEdgeExtensionExecutor, () -> {
+                    if (!animationLeash.isValid()) {
+                        Log.e(TAG, "Animation leash is not valid");
+                        synchronized (mEdgeExtensionLock) {
+                            mEdgeExtensions.remove(animationLeash);
+                        }
+                        synchronized (mLock) {
+                            mPreProcessingAnimations.remove(animationLeash);
+                        }
+                        return;
+                    }
                     final WindowAnimationSpec animationSpec = a.asWindowAnimationSpec();
 
                     final Transaction edgeExtensionCreationTransaction = new Transaction();
@@ -220,11 +232,11 @@ class SurfaceAnimationRunner {
                 if (!mAnimationStartDeferred && mPreProcessingAnimations.isEmpty()) {
                     mChoreographer.postFrameCallback(this::startAnimations);
                 }
-
-                // Some animations (e.g. move animations) require the initial transform to be
-                // applied immediately.
-                applyTransformation(runningAnim, t, 0 /* currentPlayTime */);
             }
+
+            // Some animations (e.g. move animations) require the initial transform to be
+            // applied immediately.
+            applyTransformation(runningAnim, t, 0 /* currentPlayTime */);
         }
     }
 
@@ -449,8 +461,7 @@ class SurfaceAnimationRunner {
             // The leash we are trying to screenshot may have been removed by this point, which is
             // likely the reason for ending up with a null edgeBuffer, in which case we just want to
             // return and do nothing.
-            Log.e("SurfaceAnimationRunner", "Failed to create edge extension - "
-                    + "edge buffer is null");
+            Log.e(TAG, "Failed to create edge extension - edge buffer is null");
             return;
         }
 

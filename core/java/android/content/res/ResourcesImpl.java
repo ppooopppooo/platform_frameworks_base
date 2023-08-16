@@ -167,12 +167,11 @@ public class ResourcesImpl {
      */
     @VisibleForTesting(visibility = VisibleForTesting.Visibility.PACKAGE)
     static void resetDrawableStateCache() {
-        sPreloadedDrawables[0].clear();
-        sPreloadedDrawables[1].clear();
-        sPreloadedColorDrawables.clear();
-        sPreloadedComplexColors.clear();
-
         synchronized (sSync) {
+            sPreloadedDrawables[0].clear();
+            sPreloadedDrawables[1].clear();
+            sPreloadedColorDrawables.clear();
+            sPreloadedComplexColors.clear();
             sPreloaded = false;
         }
     }

@@ -37,17 +37,12 @@ public class GamesPropsUtils {
     };
 
 
-    private static final Map<String, Object> propsToChangeK30U = createMap("M2006J10C", "Xiaomi");
-    private static final String[] packagesToChangeK30U = { // spoof as Redmi K30 Ultra
-            "com.pubg.imobile"
-    };
-
     private static final Map<String, Object> propsToChangeMI11TP = createMap("2107113SI", "Xiaomi");
     private static final String[] packagesToChangeMI11TP = { // spoof as Mi 11T PRO
-            "com.ea.gp.apexlegendsmobilefps",
             "com.levelinfinite.hotta.gp",
             "com.supercell.clashofclans",
-            "com.vng.mlbbvn"
+            "com.vng.mlbbvn",
+            "com.mobile.legends"
     };
 
     private static final Map<String, Object> propsToChangeMI13P = createMap("2210132C", "Xiaomi");
@@ -59,6 +54,7 @@ public class GamesPropsUtils {
     private static final Map<String, Object> propsToChangeOP8P = createMap("IN2020", "OnePlus");
     private static final String[] packagesToChangeOP8P = { // spoof as OnePlus 8 PRO
             "com.netease.lztgglobal",
+            "com.pubg.imobile",
             "com.pubg.krmobile",
             "com.rekoo.pubgm",
             "com.riotgames.league.wildrift",
@@ -79,8 +75,7 @@ public class GamesPropsUtils {
     private static final Map<String, Object> propsToChangeF5 = createMap("23049PCD8G", "Xiaomi");
     private static final String[] packagesToChangeF5 = { // spoof as POCO F5
             "com.dts.freefiremax",
-            "com.dts.freefireth",
-            "com.mobile.legends"
+            "com.dts.freefireth"
     };
 
     private static final Map<String, Object> propsToChangeROG6 = createMap("ASUS_AI2201", "asus");
@@ -121,8 +116,6 @@ public class GamesPropsUtils {
                 propsToChange.putAll(propsToChangeBS4);
             } else if (Arrays.asList(packagesToChangeMI11TP).contains(packageName)) {
                 propsToChange.putAll(propsToChangeMI11TP);
-            } else if (Arrays.asList(packagesToChangeK30U).contains(packageName)) {
-                propsToChange = propsToChangeK30U;
             } else if (Arrays.asList(packagesToChangeMI13P).contains(packageName)) {
                 propsToChange.putAll(propsToChangeMI13P);
             } else if (Arrays.asList(packagesToChangeOP8P).contains(packageName)) {

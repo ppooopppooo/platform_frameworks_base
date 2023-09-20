@@ -249,6 +249,7 @@ import com.android.systemui.statusbar.policy.UserSwitcherController;
 import com.android.systemui.statusbar.window.StatusBarWindowController;
 import com.android.systemui.statusbar.window.StatusBarWindowStateController;
 import com.android.systemui.surfaceeffects.ripple.RippleShader.RippleShape;
+import com.android.systemui.tuner.TunerService;
 import com.android.systemui.util.DumpUtilsKt;
 import com.android.systemui.util.WallpaperController;
 import com.android.systemui.util.concurrency.DelayableExecutor;
@@ -287,7 +288,10 @@ import dagger.Lazy;
 @SysUISingleton
 public class CentralSurfacesImpl implements CoreStartable,
         PackageChangedListener,
-        CentralSurfaces {
+        CentralSurfaces, TunerService.Tunable {
+
+    private static final String QS_TRANSPARENCY =
+            "system:" + Settings.System.QS_TRANSPARENCY;
 
     private static final String BANNER_ACTION_CANCEL =
             "com.android.systemui.statusbar.banner_action_cancel";
@@ -505,6 +509,7 @@ public class CentralSurfacesImpl implements CoreStartable,
     private final StatusBarSignalPolicy mStatusBarSignalPolicy;
     private final StatusBarHideIconsForBouncerManager mStatusBarHideIconsForBouncerManager;
     private final Lazy<LightRevealScrimViewModel> mLightRevealScrimViewModelLazy;
+    private final TunerService mTunerService;
 
     protected GameSpaceManager mGameSpaceManager;
 
@@ -789,7 +794,8 @@ public class CentralSurfacesImpl implements CoreStartable,
             UserTracker userTracker,
             Provider<FingerprintManager> fingerprintManager,
             SysUiState sysUiState,
-            BurnInProtectionController burnInProtectionController
+            BurnInProtectionController burnInProtectionController,
+            TunerService tunerService
     ) {
         mContext = context;
         mNotificationsController = notificationsController;
@@ -873,6 +879,7 @@ public class CentralSurfacesImpl implements CoreStartable,
         mUserTracker = userTracker;
         mFingerprintManager = fingerprintManager;
         mSysUiState = sysUiState;
+        mTunerService = tunerService;
 
         mLockscreenShadeTransitionController = lockscreenShadeTransitionController;
         mStartingSurfaceOptional = startingSurfaceOptional;
@@ -939,6 +946,8 @@ public class CentralSurfacesImpl implements CoreStartable,
         mKeyguardIndicationController.init();
 
         mColorExtractor.addOnColorsChangedListener(mOnColorsChangedListener);
+
+        mTunerService.addTunable(this, QS_TRANSPARENCY);
 
         mWindowManager = (WindowManager) mContext.getSystemService(Context.WINDOW_SERVICE);
 
@@ -4208,6 +4217,18 @@ public class CentralSurfacesImpl implements CoreStartable,
     }
 
     @Override
+    public void onTuningChanged(String key, String newValue) {
+        switch (key) {
+            case QS_TRANSPARENCY:
+                mScrimController.setCustomScrimAlpha(
+                        TunerService.parseInteger(newValue, 100));
+                break;
+            default:
+                break;
+         }
+    }
+
+    @Override
     public GameSpaceManager getGameSpaceManager() {
         return mGameSpaceManager;
     }
@@ -4490,8 +4511,14 @@ public class CentralSurfacesImpl implements CoreStartable,
     private final ActivityLaunchAnimator.Listener mActivityLaunchAnimatorListener =
             new ActivityLaunchAnimator.Listener() {
                 @Override
-                public void onLaunchAnimationStart() {
-                    mKeyguardViewMediator.setBlursDisabledForAppLaunch(true);
+                public void onLaunchAnimationProgress(float progress) {
+                    // as per ActivityLaunchAnimator.kt TIMINGS object,
+                    // contentBeforeFadeOutDuration of 150ms and total duration of
+                    // totalDuration of 500ms means that fade out starts at 150 / 500 = 0.3f
+                    // don't call in if progress is 0.4f+ as microoptimization, it's already set
+                    if (progress >= 0.3f && progress < 0.4f) {
+                        mKeyguardViewMediator.setBlursDisabledForAppLaunch(true);
+                    }
                 }
 
                 @Override

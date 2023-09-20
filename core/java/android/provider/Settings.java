@@ -5658,13 +5658,6 @@ public final class Settings {
         public static final String VOLUME_BUTTON_MUSIC_CONTROL = "volume_button_music_control";
 
         /**
-         * Enable/Disable screenshot sound
-         * @hide
-         */
-        @Readable
-        public static final String SCREENSHOT_SOUND = "screenshot_sound";
-
-        /**
          * Whether to scramble a pin unlock layout
          * @hide
          */

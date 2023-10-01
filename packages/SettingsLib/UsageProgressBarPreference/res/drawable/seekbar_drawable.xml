@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  ~ Copyright (C) 2021 The AospExtended Project
+  ~ Copyright (C) 2022 CorvusOS
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -14,19 +14,19 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<layer-list
-  xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:gravity="fill_horizontal|center" android:id="@android:id/background">
-        <shape android:tint="?android:attr/colorAccent" android:shape="rectangle" android:alpha="0.8">
-            <size android:height="20dp" />
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"
+    android:paddingMode="stack" >
+    <item android:id="@android:id/background"
+        android:gravity="center_vertical|fill_horizontal">
+        <shape android:tint="#2EC84E" android:shape="rectangle" android:alpha="0.2">
+            <corners android:radius="12dp" />
             <solid android:color="#80626161" />
-            <corners android:radius="10dp" />
         </shape>
     </item>
-    <item android:gravity="fill_horizontal|center" android:id="@android:id/progress">
-        <com.android.internal.graphics.drawable.RoundedCornerProgressDrawable
-            android:drawable="@drawable/seekbar_progress"
+    <item android:id="@android:id/progress"
+        android:gravity="center_vertical|fill_horizontal" >
+        <com.android.settingslib.drawable.RoundedCornerProgressDrawable
+          android:drawable="@drawable/seekbar_progress"
         />
-    </item>
+        </item>
 </layer-list>
-

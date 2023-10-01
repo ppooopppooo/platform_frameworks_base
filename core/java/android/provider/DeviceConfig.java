@@ -38,9 +38,8 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.util.syberia.DeviceConfigUtils;
 import com.android.internal.util.Preconditions;
-
-import com.android.internal.util.evolution.SimpleDeviceConfig;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -956,12 +955,10 @@ public final class DeviceConfig {
     @RequiresPermission(WRITE_DEVICE_CONFIG)
     public static boolean setProperty(@NonNull String namespace, @NonNull String name,
             @Nullable String value, boolean makeDefault) {
-        ContentResolver contentResolver = ActivityThread.currentApplication().getContentResolver();
-        // Return true for GMS thinks it suceeds and don't retry to update value
-        if (contentResolver.getPackageName().contains("com.google.android.gms")) {
-            return Settings.Config.putString(contentResolver, namespace, name,
-                        SimpleDeviceConfig.modifyValue(contentResolver, namespace, name, value), makeDefault);
+        if (DeviceConfigUtils.shouldDenyDeviceConfigControl(namespace, name)){
+            return true;
         }
+        ContentResolver contentResolver = ActivityThread.currentApplication().getContentResolver();
         return Settings.Config.putString(contentResolver, namespace, name, value, makeDefault);
     }
 
@@ -984,14 +981,10 @@ public final class DeviceConfig {
     @RequiresPermission(WRITE_DEVICE_CONFIG)
     public static boolean setProperties(@NonNull Properties properties) throws BadConfigException {
         ContentResolver contentResolver = ActivityThread.currentApplication().getContentResolver();
-        String namespace = properties.getNamespace();
-        // Set modified properties map if calling package is gms
-        if (contentResolver.getPackageName().contains("com.google.android.gms")) {
-            return Settings.Config.setStrings(contentResolver, namespace,
-                SimpleDeviceConfig.modifyProperties(contentResolver, namespace, properties.mMap));
-        }
-        return Settings.Config.setStrings(contentResolver, namespace,
+        boolean result = Settings.Config.setStrings(contentResolver, properties.getNamespace(),
                 properties.mMap);
+        DeviceConfigUtils.setDefaultProperties(contentResolver, properties.getNamespace(), null);
+        return result;
     }
 
     /**
@@ -1006,6 +999,9 @@ public final class DeviceConfig {
     @SystemApi
     @RequiresPermission(WRITE_DEVICE_CONFIG)
     public static boolean deleteProperty(@NonNull String namespace, @NonNull String name) {
+        if (DeviceConfigUtils.shouldDenyDeviceConfigControl(namespace, name)){
+            return true;
+        }
         ContentResolver contentResolver = ActivityThread.currentApplication().getContentResolver();
         return Settings.Config.deleteString(contentResolver, namespace, name);
     }
@@ -1040,6 +1036,7 @@ public final class DeviceConfig {
     public static void resetToDefaults(@ResetMode int resetMode, @Nullable String namespace) {
         ContentResolver contentResolver = ActivityThread.currentApplication().getContentResolver();
         Settings.Config.resetToDefaults(contentResolver, resetMode, namespace);
+        DeviceConfigUtils.setDefaultProperties(contentResolver, null, null);
     }
 
     /**
